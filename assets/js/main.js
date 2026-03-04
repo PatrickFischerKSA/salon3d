@@ -1,29 +1,21 @@
-// Salon3D (klassisch, ohne ES-Module)
-// Voraussetzungen: index.html lädt in dieser Reihenfolge:
-// 1) assets/vendor/three.min.js
-// 2) assets/vendor/PointerLockControls.js
-// 3) assets/js/main.js
-
-let scene, camera, renderer, controls;
-let room;
+let scene, camera, renderer, controls, room;
 
 const clock = new THREE.Clock();
 
 // Bewegung
-const keys = { w:false, a:false, s:false, d:false, up:false, left:false, down:false, right:false, shift:false };
-const velocity = new THREE.Vector3();
-const direction = new THREE.Vector3();
+const keys = {};
+let velX = 0;
+let velZ = 0;
 
-const SPEED = 4.0;        // m/s
-const SPEED_FAST = 7.5;   // mit Shift
-const DAMPING = 8.0;      // wie schnell abgebremst wird
+const SPEED = 4.0;
+const SPEED_FAST = 7.5;
+const DAMPING = 10.0;
 
-// Raum-Parameter
+// Raum
 const ROOM_W = 14;
 const ROOM_H = 4;
 const ROOM_D = 10;
 
-// Texturen (deine Bilder liegen hier)
 const ASSET = {
   wall1: "./assets/img/salon1.jpg",
   wall2: "./assets/img/salon2.jpg",
@@ -40,7 +32,7 @@ function init(){
   camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
   camera.position.set(0, 1.6, 3.5);
 
-  renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
@@ -53,49 +45,46 @@ function init(){
     btn.onclick = () => controls.lock();
   }
 
-  // Licht (für Atmosphäre; Box-Wände sind MeshBasicMaterial)
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.25));
+  // Licht
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
 
-  // Boden (damit man ein Gefühl für “stehen” hat)
-  const floorGeo = new THREE.PlaneGeometry(ROOM_W, ROOM_D);
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 1 });
-  const floor = new THREE.Mesh(floorGeo, floorMat);
-  floor.rotation.x = -Math.PI/2;
+  // Boden (einfach)
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(ROOM_W, ROOM_D),
+    new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 1 })
+  );
+  floor.rotation.x = -Math.PI / 2;
   floor.position.y = 0;
   scene.add(floor);
 
-  // Raum bauen (mit Texturen)
-  loadRoomTextures();
+  // Debug-Würfel (bleibt drin, damit wir IMMER sehen ob es läuft)
+  const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(0.4, 0.4, 0.4),
+    new THREE.MeshNormalMaterial()
+  );
+  cube.position.set(0, 1.6, 2.0);
+  scene.add(cube);
+
+  // Raum laden
+  loadRoom();
 
   // Input
-  window.addEventListener("keydown", onKeyDown);
-  window.addEventListener("keyup", onKeyUp);
+  window.addEventListener("keydown", (e)=>keys[e.code]=true);
+  window.addEventListener("keyup", (e)=>keys[e.code]=false);
   window.addEventListener("resize", onResize);
 
 }
 
-function loadRoomTextures(){
+function loadRoom(){
 
   const loader = new THREE.TextureLoader();
 
   loader.load(
     ASSET.wall1,
     (t1) => {
-
-      // bessere Schärfe
-      t1.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-      t1.colorSpace = THREE.SRGBColorSpace ? THREE.SRGBColorSpace : undefined;
-
       loader.load(
         ASSET.wall2,
-        (t2) => {
-
-          t2.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-          t2.colorSpace = THREE.SRGBColorSpace ? THREE.SRGBColorSpace : undefined;
-
-          createRoom(t1, t2);
-
-        },
+        (t2) => createRoom(t1, t2),
         undefined,
         () => createFallbackRoom()
       );
@@ -107,27 +96,26 @@ function loadRoomTextures(){
 
 function createRoom(t1, t2){
 
-  // Innenraum: Box, von innen sichtbar
   const geo = new THREE.BoxGeometry(ROOM_W, ROOM_H, ROOM_D);
 
-  // Mapping: [right, left, top, bottom, front, back]
-  // Wir mischen die beiden Perspektiven (du kannst das später feinjustieren)
+  // [right, left, top, bottom, front, back]
   const mats = [
-    new THREE.MeshBasicMaterial({ map: t2 }), // right
-    new THREE.MeshBasicMaterial({ map: t2 }), // left
-    new THREE.MeshBasicMaterial({ color: 0xeeeeee }), // top (Decke neutral)
-    new THREE.MeshBasicMaterial({ color: 0x222222 }), // bottom (Boden neutral – wir haben extra Bodenplane)
-    new THREE.MeshBasicMaterial({ map: t1 }), // front
-    new THREE.MeshBasicMaterial({ map: t1 }), // back
+    new THREE.MeshBasicMaterial({ map: t2 }),
+    new THREE.MeshBasicMaterial({ map: t2 }),
+    new THREE.MeshBasicMaterial({ color: 0xf0f0f0 }),
+    new THREE.MeshBasicMaterial({ color: 0x222222 }),
+    new THREE.MeshBasicMaterial({ map: t1 }),
+    new THREE.MeshBasicMaterial({ map: t1 }),
   ];
 
-  mats.forEach(m => m.side = THREE.BackSide);
+  for(const m of mats){
+    m.side = THREE.BackSide;
+  }
 
   room = new THREE.Mesh(geo, mats);
   room.position.set(0, ROOM_H/2, 0);
   scene.add(room);
 
-  // Startposition “im Raum”
   controls.getObject().position.set(0, 1.6, 2.5);
 }
 
@@ -143,77 +131,50 @@ function createFallbackRoom(){
   controls.getObject().position.set(0, 1.6, 2.5);
 }
 
-function onKeyDown(e){
-  switch(e.code){
-    case "KeyW": keys.w = true; break;
-    case "KeyA": keys.a = true; break;
-    case "KeyS": keys.s = true; break;
-    case "KeyD": keys.d = true; break;
-    case "ArrowUp": keys.up = true; break;
-    case "ArrowLeft": keys.left = true; break;
-    case "ArrowDown": keys.down = true; break;
-    case "ArrowRight": keys.right = true; break;
-    case "ShiftLeft":
-    case "ShiftRight": keys.shift = true; break;
-
-    // Reset
-    case "KeyR":
-      controls.getObject().position.set(0, 1.6, 2.5);
-      velocity.set(0,0,0);
-      break;
-  }
-}
-
-function onKeyUp(e){
-  switch(e.code){
-    case "KeyW": keys.w = false; break;
-    case "KeyA": keys.a = false; break;
-    case "KeyS": keys.s = false; break;
-    case "KeyD": keys.d = false; break;
-    case "ArrowUp": keys.up = false; break;
-    case "ArrowLeft": keys.left = false; break;
-    case "ArrowDown": keys.down = false; break;
-    case "ArrowRight": keys.right = false; break;
-    case "ShiftLeft":
-    case "ShiftRight": keys.shift = false; break;
-  }
-}
-
 function updateMovement(dt){
 
-  // sanft abbremsen
-  velocity.x -= velocity.x * DAMPING * dt;
-  velocity.z -= velocity.z * DAMPING * dt;
+  // Abbremsen
+  velX -= velX * DAMPING * dt;
+  velZ -= velZ * DAMPING * dt;
 
-  direction.z = Number(keys.w || keys.up) - Number(keys.s || keys.down);
-  direction.x = Number(keys.d || keys.right) - Number(keys.a || keys.left);
-  direction.normalize();
+  const forward = (keys["KeyW"] || keys["ArrowUp"]) ? 1 : 0;
+  const back    = (keys["KeyS"] || keys["ArrowDown"]) ? 1 : 0;
+  const right   = (keys["KeyD"] || keys["ArrowRight"]) ? 1 : 0;
+  const left    = (keys["KeyA"] || keys["ArrowLeft"]) ? 1 : 0;
 
-  const speed = keys.shift ? SPEED_FAST : SPEED;
+  const speed = (keys["ShiftLeft"] || keys["ShiftRight"]) ? SPEED_FAST : SPEED;
 
-  if(direction.lengthSq() > 0){
-    velocity.z -= direction.z * speed * dt * 6;
-    velocity.x -= direction.x * speed * dt * 6;
-  }
+  const dirZ = forward - back;
+  const dirX = right - left;
 
-  controls.moveRight(-velocity.x * dt);
-  controls.moveForward(-velocity.z * dt);
+  if(dirZ !== 0) velZ -= dirZ * speed * dt * 6;
+  if(dirX !== 0) velX -= dirX * speed * dt * 6;
 
-  // "Bodenhöhe" festhalten
+  controls.moveRight(-velX * dt);
+  controls.moveForward(-velZ * dt);
+
+  // Höhe fix
   controls.getObject().position.y = 1.6;
 
-  // einfache Begrenzung: im Raum bleiben
   clampToRoom();
+
+  // Reset
+  if(keys["KeyR"]){
+    controls.getObject().position.set(0, 1.6, 2.5);
+    velX = 0; velZ = 0;
+    keys["KeyR"] = false;
+  }
 }
 
 function clampToRoom(){
   const p = controls.getObject().position;
-
   const halfW = ROOM_W/2 - 0.6;
   const halfD = ROOM_D/2 - 0.6;
 
-  p.x = Math.max(-halfW, Math.min(halfW, p.x));
-  p.z = Math.max(-halfD, Math.min(halfD, p.z));
+  if(p.x > halfW) p.x = halfW;
+  if(p.x < -halfW) p.x = -halfW;
+  if(p.z > halfD) p.z = halfD;
+  if(p.z < -halfD) p.z = -halfD;
 }
 
 function animate(){
@@ -221,7 +182,7 @@ function animate(){
 
   const dt = Math.min(0.05, clock.getDelta());
 
-  if(controls.isLocked){
+  if(controls && controls.isLocked){
     updateMovement(dt);
   }
 
