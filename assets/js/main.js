@@ -1,198 +1,274 @@
-// assets/js/main.js  (PHASE 2: Raum + 2 Texturen, stabil)
-
 import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
+import { PointerLockControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/PointerLockControls.js";
 
 const statusEl = document.getElementById("status");
-const setStatus = (t) => {
-  if (statusEl) statusEl.textContent = t;
-  console.log("[STATUS]", t);
+const button = document.getElementById("enterBtn");
+
+const setStatus = (t)=>{
+if(statusEl) statusEl.textContent = t;
 };
 
 setStatus("Main geladen");
 
-// ---------------------------
-// Basis: Szene / Kamera / Renderer
-// ---------------------------
+
+// Szene
+
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
-  60,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  200
+60,
+window.innerWidth/window.innerHeight,
+0.1,
+200
 );
 
-// Etwas weiter hinten als vorher, damit die Perspektive ruhiger wirkt
-camera.position.set(0, 1.6, 7);
+camera.position.set(0,1.6,7);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x000000, 1);
+
+// Renderer
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+
 document.body.appendChild(renderer.domElement);
 
 setStatus("Renderer OK");
 
-// ---------------------------
+
+// Controls
+
+const controls = new PointerLockControls(camera,document.body);
+
+button.addEventListener("click",()=>{
+controls.lock();
+});
+
+scene.add(controls.getObject());
+
+
+// Bewegung
+
+let moveForward=false;
+let moveBackward=false;
+let moveLeft=false;
+let moveRight=false;
+
+let velocity = new THREE.Vector3();
+let direction = new THREE.Vector3();
+
+const speed = 6;
+
+
+// Tastatur
+
+document.addEventListener("keydown",(event)=>{
+
+switch(event.code){
+
+case "KeyW":
+case "ArrowUp":
+moveForward=true;
+break;
+
+case "KeyS":
+case "ArrowDown":
+moveBackward=true;
+break;
+
+case "KeyA":
+case "ArrowLeft":
+moveLeft=true;
+break;
+
+case "KeyD":
+case "ArrowRight":
+moveRight=true;
+break;
+
+}
+
+});
+
+document.addEventListener("keyup",(event)=>{
+
+switch(event.code){
+
+case "KeyW":
+case "ArrowUp":
+moveForward=false;
+break;
+
+case "KeyS":
+case "ArrowDown":
+moveBackward=false;
+break;
+
+case "KeyA":
+case "ArrowLeft":
+moveLeft=false;
+break;
+
+case "KeyD":
+case "ArrowRight":
+moveRight=false;
+break;
+
+}
+
+});
+
+
 // Licht
-// ---------------------------
-const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+
+const ambient = new THREE.AmbientLight(0xffffff,0.7);
 scene.add(ambient);
 
-const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-dir.position.set(3, 6, 4);
-scene.add(dir);
+const light = new THREE.DirectionalLight(0xffffff,0.8);
+light.position.set(3,6,4);
+scene.add(light);
 
-// ---------------------------
-// Raum-Dimensionen
-// ---------------------------
-const ROOM_W = 20; // Breite (x)
-const ROOM_D = 20; // Tiefe (z)
-const ROOM_H = 5;  // Höhe (y)
 
-const halfW = ROOM_W / 2;
-const halfD = ROOM_D / 2;
+// Raum
 
-// ---------------------------
+const ROOM_W = 20;
+const ROOM_D = 20;
+const ROOM_H = 5;
+
+const halfW = ROOM_W/2;
+const halfD = ROOM_D/2;
+
+
 // Boden
-// ---------------------------
-const floorGeo = new THREE.PlaneGeometry(ROOM_W, ROOM_D);
-const floorMat = new THREE.MeshStandardMaterial({
-  color: 0x444444,
-  roughness: 0.95,
-  metalness: 0.0
-});
 
-const floor = new THREE.Mesh(floorGeo, floorMat);
-floor.rotation.x = -Math.PI / 2;
-floor.position.y = 0;
+const floorGeo = new THREE.PlaneGeometry(ROOM_W,ROOM_D);
+const floorMat = new THREE.MeshStandardMaterial({color:0x444444});
+
+const floor = new THREE.Mesh(floorGeo,floorMat);
+
+floor.rotation.x = -Math.PI/2;
+
 scene.add(floor);
 
-// ---------------------------
-// Decke (damit oben nicht mehr schwarz ist)
-// ---------------------------
-const ceilingGeo = new THREE.PlaneGeometry(ROOM_W, ROOM_D);
-const ceilingMat = new THREE.MeshStandardMaterial({
-  color: 0x666666,
-  roughness: 0.95,
-  metalness: 0.0
-});
 
-const ceiling = new THREE.Mesh(ceilingGeo, ceilingMat);
-ceiling.rotation.x = Math.PI / 2;
+// Decke
+
+const ceilingGeo = new THREE.PlaneGeometry(ROOM_W,ROOM_D);
+const ceilingMat = new THREE.MeshStandardMaterial({color:0x666666});
+
+const ceiling = new THREE.Mesh(ceilingGeo,ceilingMat);
+
+ceiling.rotation.x = Math.PI/2;
 ceiling.position.y = ROOM_H;
+
 scene.add(ceiling);
 
-// ---------------------------
+
 // Wände
-// ---------------------------
-const wallMat = new THREE.MeshStandardMaterial({
-  color: 0x777777,
-  roughness: 0.95,
-  metalness: 0.0
-});
 
-const backFrontGeo = new THREE.PlaneGeometry(ROOM_W, ROOM_H);
-const leftRightGeo = new THREE.PlaneGeometry(ROOM_D, ROOM_H);
+const wallMat = new THREE.MeshStandardMaterial({color:0x777777});
 
-// Rückwand (z = -halfD)
-const backWall = new THREE.Mesh(backFrontGeo, wallMat);
-backWall.position.set(0, ROOM_H / 2, -halfD);
+const wallGeo = new THREE.PlaneGeometry(ROOM_W,ROOM_H);
+
+const backWall = new THREE.Mesh(wallGeo,wallMat);
+backWall.position.set(0,ROOM_H/2,-halfD);
 scene.add(backWall);
 
-// Vorderwand (z = +halfD), nach innen schauen
-const frontWall = new THREE.Mesh(backFrontGeo, wallMat);
-frontWall.position.set(0, ROOM_H / 2, halfD);
+const frontWall = new THREE.Mesh(wallGeo,wallMat);
+frontWall.position.set(0,ROOM_H/2,halfD);
 frontWall.rotation.y = Math.PI;
 scene.add(frontWall);
 
-// Linke Wand (x = -halfW)
-const leftWall = new THREE.Mesh(leftRightGeo, wallMat);
-leftWall.position.set(-halfW, ROOM_H / 2, 0);
-leftWall.rotation.y = Math.PI / 2;
+const sideGeo = new THREE.PlaneGeometry(ROOM_D,ROOM_H);
+
+const leftWall = new THREE.Mesh(sideGeo,wallMat);
+leftWall.position.set(-halfW,ROOM_H/2,0);
+leftWall.rotation.y = Math.PI/2;
 scene.add(leftWall);
 
-// Rechte Wand (x = +halfW)
-const rightWall = new THREE.Mesh(leftRightGeo, wallMat);
-rightWall.position.set(halfW, ROOM_H / 2, 0);
-rightWall.rotation.y = -Math.PI / 2;
+const rightWall = new THREE.Mesh(sideGeo,wallMat);
+rightWall.position.set(halfW,ROOM_H/2,0);
+rightWall.rotation.y = -Math.PI/2;
 scene.add(rightWall);
 
-// ---------------------------
-// Texturen laden + Bilder platzieren
-// ---------------------------
+
+// Bilder
+
 const loader = new THREE.TextureLoader();
-let tex1Loaded = false;
-let tex2Loaded = false;
 
-const tryReady = () => {
-  if (tex1Loaded && tex2Loaded) setStatus("Szene bereit");
-};
+loader.load("/salon3d/assets/img/salon1.jpg",(texture)=>{
 
-const makePainting = (texture, x) => {
-  // Bilder wirken natürlicher, wenn sie nicht “glänzen”
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const mat = new THREE.MeshBasicMaterial({map:texture});
+const geo = new THREE.PlaneGeometry(6,4);
 
-  const mat = new THREE.MeshBasicMaterial({ map: texture });
-  const geo = new THREE.PlaneGeometry(6, 4);
-  const mesh = new THREE.Mesh(geo, mat);
+const mesh = new THREE.Mesh(geo,mat);
 
-  // minimal vor der Rückwand, damit kein Z-Fighting entsteht
-  mesh.position.set(x, 2.2, -halfD + 0.01);
-  scene.add(mesh);
-};
+mesh.position.set(-4,2,-halfD+0.01);
 
-// Textur 1
-loader.load(
-  "/salon3d/assets/img/salon1.jpg",
-  (texture) => {
-    tex1Loaded = true;
-    setStatus("Textur 1 OK");
-    makePainting(texture, -4);
-    tryReady();
-  },
-  undefined,
-  (err) => {
-    console.error(err);
-    setStatus("FEHLER: Textur 1 konnte nicht geladen werden");
-  }
-);
+scene.add(mesh);
 
-// Textur 2
-loader.load(
-  "/salon3d/assets/img/salon2.jpg",
-  (texture) => {
-    tex2Loaded = true;
-    setStatus("Textur 2 OK");
-    makePainting(texture, 4);
-    tryReady();
-  },
-  undefined,
-  (err) => {
-    console.error(err);
-    setStatus("FEHLER: Textur 2 konnte nicht geladen werden");
-  }
-);
+setStatus("Textur 1 OK");
 
-// ---------------------------
-// Animation Loop
-// ---------------------------
-function animate() {
-  requestAnimationFrame(animate);
-  renderer.render(scene, camera);
+});
+
+loader.load("/salon3d/assets/img/salon2.jpg",(texture)=>{
+
+const mat = new THREE.MeshBasicMaterial({map:texture});
+const geo = new THREE.PlaneGeometry(6,4);
+
+const mesh = new THREE.Mesh(geo,mat);
+
+mesh.position.set(4,2,-halfD+0.01);
+
+scene.add(mesh);
+
+setStatus("Szene bereit");
+
+});
+
+
+// Animation
+
+const clock = new THREE.Clock();
+
+function animate(){
+
+requestAnimationFrame(animate);
+
+const delta = clock.getDelta();
+
+velocity.x -= velocity.x * 10.0 * delta;
+velocity.z -= velocity.z * 10.0 * delta;
+
+direction.z = Number(moveForward) - Number(moveBackward);
+direction.x = Number(moveRight) - Number(moveLeft);
+
+direction.normalize();
+
+if(moveForward || moveBackward)
+velocity.z -= direction.z * speed * delta;
+
+if(moveLeft || moveRight)
+velocity.x -= direction.x * speed * delta;
+
+controls.moveRight(-velocity.x * delta);
+controls.moveForward(-velocity.z * delta);
+
+renderer.render(scene,camera);
+
 }
+
 animate();
 
-// ---------------------------
+
 // Resize
-// ---------------------------
-window.addEventListener("resize", () => {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
 
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
+window.addEventListener("resize",()=>{
 
-  renderer.setSize(w, h);
+camera.aspect = window.innerWidth/window.innerHeight;
+camera.updateProjectionMatrix();
+
+renderer.setSize(window.innerWidth,window.innerHeight);
+
 });
