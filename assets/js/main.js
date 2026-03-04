@@ -33,7 +33,6 @@ function init(){
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.5));
 
-  // Testwürfel (muss sichtbar sein)
   const cube = new THREE.Mesh(
     new THREE.BoxGeometry(2,2,2),
     new THREE.MeshStandardMaterial({ color: 0xcccccc })
