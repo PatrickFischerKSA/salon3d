@@ -1,27 +1,65 @@
 <!doctype html>
 <html lang="de">
+
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Salon3D – Biedermeier</title>
-  <link rel="stylesheet" href="./assets/css/style.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Salon3D</title>
+
+<style>
+
+body{
+margin:0;
+overflow:hidden;
+font-family:Arial;
+background:black;
+}
+
+#hud{
+position:absolute;
+top:20px;
+left:20px;
+background:white;
+padding:15px;
+border-radius:12px;
+width:260px;
+box-shadow:0 5px 20px rgba(0,0,0,0.4);
+}
+
+#hud h2{
+margin-top:0;
+}
+
+button{
+padding:10px;
+border-radius:8px;
+border:none;
+background:black;
+color:white;
+cursor:pointer;
+}
+
+</style>
+
 </head>
+
 <body>
-  <div id="hud">
-    <div class="title">Salon3D</div>
-    <div class="controls">
-      Klick ins Bild → Maus-Look (Pointer Lock)<br/>
-      WASD / Pfeile → bewegen
-    </div>
-    <button id="enterBtn">Start / Maus aktivieren</button>
-  </div>
 
-  <!-- Three.js (klassisch, ohne Module) -->
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-  <!-- PointerLockControls (klassisch, ohne Module) -->
-  <script src="https://unpkg.com/three@0.160.0/examples/js/controls/PointerLockControls.js"></script>
+<div id="hud">
 
-  <!-- Dein Script (klassisch) -->
-  <script src="./assets/js/main.js"></script>
+<h2>Salon3D</h2>
+
+Klick ins Bild → Maus-Look (Pointer Lock)<br>
+WASD / Pfeile → bewegen<br><br>
+
+<button id="enterBtn">Start / Maus aktivieren</button>
+
+</div>
+
+<script src="./assets/vendor/three.min.js"></script>
+<script src="./assets/vendor/PointerLockControls.js"></script>
+<script src="./assets/js/main.js"></script>
+
 </body>
 </html>
