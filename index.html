@@ -1,64 +1,76 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
-
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-
+<meta charset="UTF-8">
 <title>Salon3D</title>
 
 <style>
-
 body{
-margin:0;
-overflow:hidden;
-font-family:Arial;
-background:black;
+  margin:0;
+  overflow:hidden;
+  font-family:Arial, Helvetica, sans-serif;
+  background:#000;
 }
 
-#hud{
-position:absolute;
-top:20px;
-left:20px;
-background:white;
-padding:15px;
-border-radius:12px;
-width:260px;
-box-shadow:0 5px 20px rgba(0,0,0,0.4);
+#ui{
+  position:absolute;
+  top:20px;
+  left:20px;
+  background:rgba(255,255,255,0.9);
+  padding:16px;
+  border-radius:12px;
+  width:260px;
 }
 
-#hud h2{
-margin-top:0;
+#ui h2{
+  margin-top:0;
 }
 
 button{
-padding:10px;
-border-radius:8px;
-border:none;
-background:black;
-color:white;
-cursor:pointer;
+  padding:10px 14px;
+  border:none;
+  border-radius:8px;
+  background:#111;
+  color:white;
+  cursor:pointer;
 }
 
+button:hover{
+  background:#333;
+}
 </style>
 
 </head>
 
 <body>
 
-<div id="hud">
+<div id="ui">
 
 <h2>Salon3D</h2>
 
+<p>
 Klick ins Bild → Maus-Look (Pointer Lock)<br>
-WASD / Pfeile → bewegen<br><br>
+WASD / Pfeile → bewegen<br>
+Shift → schneller<br>
+Space → kleiner Hopser<br><br>
 
-<button id="enterBtn">Start / Maus aktivieren</button>
+ESC → Maus frei<br>
+R → Reset Position
+</p>
+
+<button id="enterBtn">
+Start / Maus aktivieren
+</button>
 
 </div>
 
+<!-- THREE -->
 <script src="./assets/vendor/three.min.js"></script>
+
+<!-- CONTROLS -->
 <script src="./assets/vendor/PointerLockControls.js"></script>
+
+<!-- MAIN SCRIPT -->
 <script src="./assets/js/main.js"></script>
 
 </body>
