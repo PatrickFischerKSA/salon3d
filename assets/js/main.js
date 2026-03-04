@@ -8,157 +8,145 @@ const ASSET = {
 
 let scene, camera, renderer, controls;
 
-init();
-animate();
+boot();
 
-function init(){
-
-  console.log("Salon3D startet...");
-  console.log("Texture 1:", ASSET.wall1);
-  console.log("Texture 2:", ASSET.wall2);
+function boot() {
+  uiLog("Boot…");
+  uiLog("wall1: " + ASSET.wall1);
+  uiLog("wall2: " + ASSET.wall2);
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x000000);
+  scene.background = new THREE.Color(0x111111);
 
-  camera = new THREE.PerspectiveCamera(
-    70,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    200
-  );
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
+  camera.position.set(0, 1.6, 4);
 
-  camera.position.set(0,1.6,4);
+  // Renderer: hier knallt es, wenn WebGL/HW-Accel aus ist
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch (e) {
+    uiLog("❌ Renderer creation failed (WebGL?)");
+    console.error(e);
+    return;
+  }
 
-  renderer = new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
+  // Test-Objekt: MUSS sofort sichtbar sein
+  const test = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshNormalMaterial()
+  );
+  test.position.set(0, 1.6, 0);
+  scene.add(test);
+  uiLog("✅ Testwürfel erstellt (wenn du den NICHT siehst -> WebGL/Rendering)");
+
+  // Licht (für später; Testwürfel braucht es nicht)
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+
+  // Controls
   controls = new PointerLockControls(camera, renderer.domElement);
   scene.add(controls.getObject());
 
   const btn = document.getElementById("enterBtn");
+  if (btn) btn.onclick = () => controls.lock();
 
-  if(btn){
-    btn.onclick = () => {
-      console.log("PointerLock aktiviert");
-      controls.lock();
-    };
-  }
-
-  const light = new THREE.HemisphereLight(0xffffff,0x444444,1.2);
-  scene.add(light);
-
+  // Texturen laden + Raum erstellen
   const loader = new THREE.TextureLoader();
 
   loader.load(
-
     ASSET.wall1,
-
-    function(texture1){
-
-      console.log("Texture 1 geladen");
-
+    (t1) => {
+      uiLog("✅ salon1.jpg geladen");
       loader.load(
-
         ASSET.wall2,
-
-        function(texture2){
-
-          console.log("Texture 2 geladen");
-
-          createRoom(texture1, texture2);
-
+        (t2) => {
+          uiLog("✅ salon2.jpg geladen");
+          createRoom(t1, t2);
         },
-
         undefined,
-
-        function(err){
-
-          console.error("Fehler beim Laden von salon2.jpg");
+        (err) => {
+          uiLog("❌ Fehler salon2.jpg (siehe Konsole)");
           console.error(err);
-
           createFallbackRoom();
-
         }
-
       );
-
     },
-
     undefined,
-
-    function(err){
-
-      console.error("Fehler beim Laden von salon1.jpg");
+    (err) => {
+      uiLog("❌ Fehler salon1.jpg (siehe Konsole)");
       console.error(err);
-
       createFallbackRoom();
-
     }
-
   );
 
   window.addEventListener("resize", onResize);
 
+  animate(test);
 }
 
-function createRoom(t1, t2){
-
-  const geometry = new THREE.BoxGeometry(14,4,10);
+function createRoom(t1, t2) {
+  const geometry = new THREE.BoxGeometry(14, 4, 10);
 
   const materials = [
-
-    new THREE.MeshBasicMaterial({map:t1}),
-    new THREE.MeshBasicMaterial({map:t1}),
-    new THREE.MeshBasicMaterial({map:t2}),
-    new THREE.MeshBasicMaterial({map:t2}),
-    new THREE.MeshBasicMaterial({map:t1}),
-    new THREE.MeshBasicMaterial({map:t2})
-
+    new THREE.MeshBasicMaterial({ map: t1 }),
+    new THREE.MeshBasicMaterial({ map: t1 }),
+    new THREE.MeshBasicMaterial({ map: t2 }),
+    new THREE.MeshBasicMaterial({ map: t2 }),
+    new THREE.MeshBasicMaterial({ map: t1 }),
+    new THREE.MeshBasicMaterial({ map: t2 }),
   ];
-
-  materials.forEach(m => m.side = THREE.BackSide);
+  materials.forEach((m) => (m.side = THREE.BackSide));
 
   const room = new THREE.Mesh(geometry, materials);
   room.position.y = 2;
-
   scene.add(room);
 
-  console.log("Salon erstellt");
-
+  uiLog("✅ Raum erstellt");
 }
 
-function createFallbackRoom(){
-
-  console.warn("Fallback Raum wird erzeugt (keine Texturen)");
-
-  const geometry = new THREE.BoxGeometry(14,4,10);
-
-  const material = new THREE.MeshBasicMaterial({
-    color:0x444444,
-    side:THREE.BackSide
-  });
-
+function createFallbackRoom() {
+  const geometry = new THREE.BoxGeometry(14, 4, 10);
+  const material = new THREE.MeshBasicMaterial({ color: 0x444444, side: THREE.BackSide });
   const room = new THREE.Mesh(geometry, material);
   room.position.y = 2;
-
   scene.add(room);
-
+  uiLog("⚠️ Fallback-Raum (ohne Texturen) erstellt");
 }
 
-function onResize(){
+function animate(testMesh) {
+  requestAnimationFrame(() => animate(testMesh));
+  // Testwürfel drehen: wenn du ihn siehst, siehst du auch Bewegung
+  if (testMesh) testMesh.rotation.y += 0.01;
+  renderer.render(scene, camera);
+}
 
+function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-
   renderer.setSize(window.innerWidth, window.innerHeight);
-
 }
 
-function animate(){
-
-  requestAnimationFrame(animate);
-
-  renderer.render(scene,camera);
-
+/* --- Mini HUD Debug --- */
+function uiLog(msg) {
+  console.log(msg);
+  let box = document.getElementById("debugBox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "debugBox";
+    box.style.position = "absolute";
+    box.style.right = "14px";
+    box.style.top = "14px";
+    box.style.zIndex = "9999";
+    box.style.maxWidth = "420px";
+    box.style.background = "rgba(0,0,0,0.75)";
+    box.style.color = "white";
+    box.style.padding = "10px 12px";
+    box.style.borderRadius = "12px";
+    box.style.font = "12px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    box.style.whiteSpace = "pre-wrap";
+    document.body.appendChild(box);
+  }
+  box.textContent += msg + "\\n";
 }
