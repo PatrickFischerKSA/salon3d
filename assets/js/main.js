@@ -1,20 +1,13 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { PointerLockControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/PointerLockControls.js";
 
-// ------------------------------------------------------------
-// Salon3D – Zylinder-Panorama (perspektivisch stabiler als Box)
-// Nutzt salon1 als "Rundum-Wand" + salon2 als extra Paneel
-// ------------------------------------------------------------
-
 const ASSET = {
-  pano: "./assets/img/salon1.jpg",
-  panel: "./assets/img/salon2.jpg",
+  pano: "/salon3d/assets/img/salon1.jpg",
+  panel: "/salon3d/assets/img/salon2.jpg",
 };
 
-// Player
 const EYE_HEIGHT = 1.6;
 
-// Bewegung
 const SPEED = 4.0;
 const SPEED_FAST = 7.5;
 const DAMPING = 10.0;
@@ -25,18 +18,23 @@ const keys = Object.create(null);
 let velX = 0;
 let velZ = 0;
 
-// Raumgrenzen (damit du nicht "durch die Wand")
-const LIMIT_R = 4.2; // Radius, in dem du laufen darfst
+const LIMIT_R = 4.2;
 
 init();
 animate();
 
+function setStatus(msg){
+  const el = document.getElementById("status");
+  if(el) el.textContent = msg;
+}
+
 function init() {
+
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
 
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 300);
-  camera.position.set(0, EYE_HEIGHT, 0.0);
+  camera.position.set(0, EYE_HEIGHT, 0);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -49,10 +47,9 @@ function init() {
   const btn = document.getElementById("enterBtn");
   if (btn) btn.onclick = () => controls.lock();
 
-  // Licht nur minimal (weil wir hauptsächlich Bildmaterial zeigen)
   scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.6));
 
-  // Laden & Szene bauen
+  setStatus("Lade Texturen…");
   buildPanorama();
 
   window.addEventListener("keydown", (e) => (keys[e.code] = true));
@@ -65,7 +62,12 @@ function buildPanorama() {
 
   const loadTexture = (url) =>
     new Promise((resolve, reject) => {
-      loader.load(url, resolve, undefined, reject);
+      loader.load(
+        url,
+        (tex) => resolve(tex),
+        undefined,
+        (err) => reject(new Error("Texture load failed: " + url))
+      );
     });
 
   Promise.all([loadTexture(ASSET.pano), loadTexture(ASSET.panel)])
@@ -73,50 +75,41 @@ function buildPanorama() {
       prepareTexture(tPano);
       prepareTexture(tPanel);
 
-      // 1) Zylinder als Wand (innen sichtbar)
-      // Wir verwenden einen Zylinder (ohne Top/Bottom), damit nichts "schwebt".
       const R = 6.0;
       const H = 4.2;
 
       const cylGeo = new THREE.CylinderGeometry(R, R, H, 64, 1, true);
-      const cylMat = new THREE.MeshBasicMaterial({
-        map: tPano,
-        side: THREE.BackSide,
-      });
-
+      const cylMat = new THREE.MeshBasicMaterial({ map: tPano, side: THREE.BackSide });
       const cylinder = new THREE.Mesh(cylGeo, cylMat);
       cylinder.position.y = H / 2;
       scene.add(cylinder);
 
-      // 2) Zusatz-Paneel aus salon2 (wie ein großes Wandbild/Patch)
-      // Damit du Perspektive von salon2 bekommst, ohne die ganze Geometrie zu zerstören.
       const panelW = 9.0;
       const panelH = 4.0;
 
       const panelGeo = new THREE.PlaneGeometry(panelW, panelH);
-      const panelMat = new THREE.MeshBasicMaterial({
-        map: tPanel,
-        side: THREE.DoubleSide,
-      });
-
+      const panelMat = new THREE.MeshBasicMaterial({ map: tPanel, side: THREE.DoubleSide });
       const panel = new THREE.Mesh(panelGeo, panelMat);
 
-      // Paneel leicht nach vorne, auf einer Seite des Zylinders
       panel.position.set(0, panelH / 2, -5.2);
-      panel.rotation.y = 0; // Blickrichtung
+      panel.rotation.y = 0;
       scene.add(panel);
 
-      // Startposition
       controls.getObject().position.set(0, EYE_HEIGHT, 2.0);
+
+      setStatus("Texturen OK. Klick: Maus-Look.");
     })
-    .catch(() => {
-      // Fallback: einfach grau
+    .catch((e) => {
+      setStatus("FEHLER: Texturen nicht geladen (Pfad/Name prüfen).");
+      console.error(e);
+
       const box = new THREE.Mesh(
         new THREE.BoxGeometry(10, 6, 10),
         new THREE.MeshBasicMaterial({ color: 0x333333, side: THREE.BackSide })
       );
       box.position.y = 3;
       scene.add(box);
+
       controls.getObject().position.set(0, EYE_HEIGHT, 2.0);
     });
 }
@@ -134,7 +127,6 @@ function animate() {
   requestAnimationFrame(animate);
 
   const dt = Math.min(0.05, clock.getDelta());
-
   if (controls.isLocked) updateMovement(dt);
 
   renderer.render(scene, camera);
@@ -159,13 +151,9 @@ function updateMovement(dt) {
   controls.moveRight(-velX * dt);
   controls.moveForward(-velZ * dt);
 
-  // Höhe fix
   controls.getObject().position.y = EYE_HEIGHT;
-
-  // Begrenzen: Kreisradius
   clampToCircle();
 
-  // Reset
   if (keys["KeyR"]) {
     controls.getObject().position.set(0, EYE_HEIGHT, 2.0);
     velX = 0;
