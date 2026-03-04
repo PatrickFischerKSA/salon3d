@@ -1,43 +1,62 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
+
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Salon3D</title>
 
 <style>
+
 body{
-  margin:0;
-  overflow:hidden;
-  font-family:Arial, Helvetica, sans-serif;
-  background:#000;
+margin:0;
+overflow:hidden;
+font-family:Arial, Helvetica, sans-serif;
+background:#000;
 }
 
 #ui{
-  position:absolute;
-  top:20px;
-  left:20px;
-  background:rgba(255,255,255,0.9);
-  padding:16px;
-  border-radius:12px;
-  width:260px;
+position:absolute;
+top:20px;
+left:20px;
+background:rgba(255,255,255,0.9);
+padding:16px;
+border-radius:12px;
+width:260px;
+box-shadow:0 4px 20px rgba(0,0,0,0.25);
 }
 
 #ui h2{
-  margin-top:0;
+margin-top:0;
+margin-bottom:10px;
+}
+
+#ui p{
+font-size:14px;
+line-height:1.4;
 }
 
 button{
-  padding:10px 14px;
-  border:none;
-  border-radius:8px;
-  background:#111;
-  color:white;
-  cursor:pointer;
+margin-top:10px;
+padding:10px 14px;
+border:none;
+border-radius:8px;
+background:#111;
+color:white;
+cursor:pointer;
+font-size:14px;
 }
 
 button:hover{
-  background:#333;
+background:#333;
 }
+
+canvas{
+display:block;
+}
+
 </style>
 
 </head>
@@ -64,14 +83,9 @@ Start / Maus aktivieren
 
 </div>
 
-<!-- THREE -->
-<script src="./assets/vendor/three.min.js"></script>
 
-<!-- CONTROLS -->
-<script src="./assets/vendor/PointerLockControls.js"></script>
+<script type="module" src="./assets/js/main.js"></script>
 
-<!-- MAIN SCRIPT -->
-<script src="./assets/js/main.js"></script>
 
 </body>
 </html>
