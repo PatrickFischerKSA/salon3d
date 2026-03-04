@@ -1,68 +1,103 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
+
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Salon3D</title>
-  <style>
-    html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#000; }
-    canvas { display:block; }
 
-    #ui {
-      position: fixed;
-      left: 24px;
-      top: 20px;
-      z-index: 10;
-      width: 360px;
-      max-width: calc(100vw - 48px);
-      background: rgba(245,245,245,0.95);
-      border-radius: 18px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
-      padding: 18px 18px 16px;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color: #111;
-    }
-    #ui h1 {
-      font-size: 34px;
-      margin: 0 0 10px 0;
-      letter-spacing: 0.3px;
-    }
-    #ui .hint { font-size: 14px; line-height: 1.35; white-space: pre-line; }
-    #enterBtn {
-      margin-top: 14px;
-      display: inline-block;
-      border: 0;
-      background: #111;
-      color: #fff;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    #enterBtn:active { transform: translateY(1px); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    #status {
-      margin-top: 10px;
-      font-size: 12px;
-      opacity: 0.75;
-    }
-  </style>
+<title>Salon3D</title>
+
+<style>
+
+html,body{
+margin:0;
+padding:0;
+overflow:hidden;
+background:#000;
+font-family:Arial, Helvetica, sans-serif;
+}
+
+canvas{
+display:block;
+}
+
+#ui{
+position:absolute;
+top:20px;
+left:20px;
+width:260px;
+background:rgba(255,255,255,0.9);
+padding:18px;
+border-radius:14px;
+box-shadow:0 10px 30px rgba(0,0,0,0.35);
+z-index:10;
+}
+
+#ui h2{
+margin-top:0;
+margin-bottom:10px;
+}
+
+#ui p{
+font-size:14px;
+line-height:1.45;
+}
+
+button{
+margin-top:10px;
+padding:10px 14px;
+border:none;
+border-radius:8px;
+background:#111;
+color:white;
+font-size:14px;
+cursor:pointer;
+}
+
+button:hover{
+background:#333;
+}
+
+#status{
+margin-top:10px;
+font-size:13px;
+opacity:0.75;
+}
+
+</style>
+
 </head>
+
 <body>
 
-  <div id="ui">
-    <h1>Salon3D</h1>
-    <div class="hint">Klick ins Bild → Maus-Look (Pointer Lock)
-WASD / Pfeile → bewegen
-Shift → schneller
+<div id="ui">
+
+<h2>Salon3D</h2>
+
+<p>
+Klick ins Bild → Maus-Look (Pointer Lock)<br>
+WASD / Pfeile → bewegen<br>
+Shift → schneller<br>
 Space → kleiner Hopser
+</p>
 
-ESC → Maus frei
-R → Reset Position</div>
-    <button id="enterBtn" type="button">Start / Maus aktivieren</button>
-    <div id="status">Lade Texturen…</div>
-  </div>
+<p>
+ESC → Maus frei<br>
+R → Reset Position
+</p>
 
-  <script type="module" src="./assets/js/main.js"></script>
+<button id="enterBtn">
+Start / Maus aktivieren
+</button>
+
+<div id="status">
+Lade Texturen...
+</div>
+
+</div>
+
+<script type="module" src="./assets/js/main.js"></script>
+
 </body>
 </html>
