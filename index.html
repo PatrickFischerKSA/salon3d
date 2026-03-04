@@ -1,65 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Salon3D</title>
 
+  <!-- verhindert favicon-404 -->
+  <link rel="icon" href="data:," />
+
   <style>
-    body{
-      margin:0;
-      overflow:hidden;
-      background:#000;
-      font-family:Arial, Helvetica, sans-serif;
-    }
+    html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000; }
+    canvas { display:block; }
 
-    canvas{
-      display:block;
+    .hud {
+      position: fixed;
+      left: 18px; top: 18px;
+      width: 360px;
+      background: #efefef;
+      border-radius: 18px;
+      padding: 18px 18px 16px 18px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.35);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      z-index: 10;
     }
-
-    #ui{
-      position:absolute;
-      top:20px;
-      left:20px;
-      background:rgba(255,255,255,0.92);
-      padding:16px;
-      border-radius:12px;
-      width:260px;
-      box-shadow:0 5px 20px rgba(0,0,0,0.3);
-    }
-
-    #ui h2{
-      margin:0 0 10px 0;
-    }
-
-    #ui p{
-      font-size:14px;
-      line-height:1.45;
-      margin:0;
-    }
-
-    button{
-      margin-top:10px;
-      padding:10px 14px;
-      border:none;
-      border-radius:8px;
-      background:#111;
-      color:white;
-      font-size:14px;
-      cursor:pointer;
-    }
-
-    button:hover{
-      background:#333;
+    .hud h1 { margin:0 0 10px 0; font-size: 32px; line-height:1.05; }
+    .hud p { margin: 0 0 12px 0; font-size: 14px; line-height: 1.35; }
+    .hud .btn {
+      display:inline-block;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: none;
+      background: #111;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
     }
   </style>
 </head>
 
 <body>
-  <div id="ui">
-    <h2>Salon3D</h2>
-
+  <div class="hud">
+    <h1>Salon3D</h1>
     <p>
       Klick ins Bild → Maus-Look (Pointer Lock)<br>
       WASD / Pfeile → bewegen<br>
@@ -68,11 +49,10 @@
       ESC → Maus frei<br>
       R → Reset Position
     </p>
-
-    <button id="enterBtn">Start / Maus aktivieren</button>
+    <button class="btn" id="enterBtn">Start / Maus aktivieren</button>
   </div>
 
-  <!-- Wichtig: main.js ist ein ES-Module -->
+  <!-- ✅ MUSS module sein -->
   <script type="module" src="./assets/js/main.js"></script>
 </body>
 </html>
