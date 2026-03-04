@@ -1,5 +1,5 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
-import { PointerLockControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/PointerLockControls.js";
+import * as THREE from "../vendor/three.module.js";
+import { PointerLockControls } from "../vendor/PointerLockControls.js";
 
 let scene, camera, renderer, controls;
 
@@ -8,65 +8,48 @@ animate();
 
 function init(){
 
-scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
 
-camera = new THREE.PerspectiveCamera(
-75,
-window.innerWidth / window.innerHeight,
-0.1,
-1000
-);
+  camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
+  camera.position.set(0, 1.6, 5);
 
-camera.position.z = 5;
+  renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
 
-renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+  controls = new PointerLockControls(camera, renderer.domElement);
+  scene.add(controls.getObject());
 
+  const btn = document.getElementById("enterBtn");
+  if(btn){
+    btn.onclick = () => controls.lock();
+  }
 
-controls = new PointerLockControls(camera, renderer.domElement);
-scene.add(controls.getObject());
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.5));
 
-const btn = document.getElementById("enterBtn");
-if(btn){
-btn.onclick = () => controls.lock();
-}
+  // Testwürfel (muss sichtbar sein)
+  const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(2,2,2),
+    new THREE.MeshStandardMaterial({ color: 0xcccccc })
+  );
+  scene.add(cube);
 
-
-const light = new THREE.HemisphereLight(0xffffff,0x444444,1.5);
-scene.add(light);
-
-
-const geometry = new THREE.BoxGeometry(2,2,2);
-
-const material = new THREE.MeshStandardMaterial({
-color:0xcccccc
-});
-
-const cube = new THREE.Mesh(geometry,material);
-
-scene.add(cube);
-
-
-window.addEventListener("resize",onResize);
-
+  window.addEventListener("resize", onResize);
 }
 
 function onResize(){
-
-camera.aspect = window.innerWidth / window.innerHeight;
-camera.updateProjectionMatrix();
-
-renderer.setSize(window.innerWidth,window.innerHeight);
-
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-
 function animate(){
-
-requestAnimationFrame(animate);
-
-renderer.render(scene,camera);
-
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
 }
