@@ -1,7 +1,7 @@
-// assets/js/main.js  (PHASE 3: Raum + Texturen + PointerLock + WASD) — STABIL (jsDelivr)
+// assets/js/main.js — Raum + 2 Texturen + PointerLock + WASD (Importmap-Variante)
 
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
-import { PointerLockControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/PointerLockControls.js";
+import * as THREE from "three";
+import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 
 const statusEl = document.getElementById("status");
 const enterBtn = document.getElementById("enterBtn");
@@ -54,6 +54,7 @@ const ROOM_H = 5;
 const halfW = ROOM_W / 2;
 const halfD = ROOM_D / 2;
 
+// Boden
 const floorGeo = new THREE.PlaneGeometry(ROOM_W, ROOM_D);
 const floorMat = new THREE.MeshStandardMaterial({
   color: 0x444444,
@@ -65,6 +66,7 @@ floor.rotation.x = -Math.PI / 2;
 floor.position.y = 0;
 scene.add(floor);
 
+// Decke
 const ceilingGeo = new THREE.PlaneGeometry(ROOM_W, ROOM_D);
 const ceilingMat = new THREE.MeshStandardMaterial({
   color: 0x666666,
@@ -76,6 +78,7 @@ ceiling.rotation.x = Math.PI / 2;
 ceiling.position.y = ROOM_H;
 scene.add(ceiling);
 
+// Wände
 const wallMat = new THREE.MeshStandardMaterial({
   color: 0x777777,
   roughness: 0.95,
@@ -105,7 +108,7 @@ rightWall.rotation.y = -Math.PI / 2;
 scene.add(rightWall);
 
 // ---------------------------
-// PointerLock + WASD
+// PointerLockControls + Bewegung
 // ---------------------------
 const controls = new PointerLockControls(camera, document.body);
 scene.add(controls.getObject());
@@ -118,42 +121,48 @@ let moveForward = false;
 let moveBackward = false;
 let moveLeft = false;
 let moveRight = false;
+let sprint = false;
 
 const velocity = new THREE.Vector3();
 const direction = new THREE.Vector3();
-
 const clock = new THREE.Clock();
 
-const WALK_SPEED = 6;     // m/s (gefühlt)
-const SPRINT_MULT = 1.8;  // Shift
+const WALK_SPEED = 6;
+const SPRINT_MULT = 1.8;
 
-let sprint = false;
+// optional: kleiner Hopser (ohne Physik)
+let hopV = 0;
+const GRAVITY = 18;
+const FLOOR_Y = 1.6;
 
 document.addEventListener("keydown", (e) => {
   switch (e.code) {
     case "KeyW":
     case "ArrowUp":
-      moveForward = true;
-      break;
+      moveForward = true; break;
     case "KeyS":
     case "ArrowDown":
-      moveBackward = true;
-      break;
+      moveBackward = true; break;
     case "KeyA":
     case "ArrowLeft":
-      moveLeft = true;
-      break;
+      moveLeft = true; break;
     case "KeyD":
     case "ArrowRight":
-      moveRight = true;
-      break;
+      moveRight = true; break;
+
     case "ShiftLeft":
     case "ShiftRight":
-      sprint = true;
+      sprint = true; break;
+
+    case "Space":
+      // kleiner Hopser nur wenn "am Boden"
+      if (Math.abs(controls.getObject().position.y - FLOOR_Y) < 0.001) hopV = 5;
       break;
+
     case "KeyR":
-      controls.getObject().position.set(0, 1.6, 7);
+      controls.getObject().position.set(0, FLOOR_Y, 7);
       velocity.set(0, 0, 0);
+      hopV = 0;
       break;
   }
 });
@@ -162,31 +171,28 @@ document.addEventListener("keyup", (e) => {
   switch (e.code) {
     case "KeyW":
     case "ArrowUp":
-      moveForward = false;
-      break;
+      moveForward = false; break;
     case "KeyS":
     case "ArrowDown":
-      moveBackward = false;
-      break;
+      moveBackward = false; break;
     case "KeyA":
     case "ArrowLeft":
-      moveLeft = false;
-      break;
+      moveLeft = false; break;
     case "KeyD":
     case "ArrowRight":
-      moveRight = false;
-      break;
+      moveRight = false; break;
+
     case "ShiftLeft":
     case "ShiftRight":
-      sprint = false;
-      break;
+      sprint = false; break;
   }
 });
 
 // ---------------------------
-// Texturen (Bilder an Rückwand)
+// Texturen (Bilder)
 // ---------------------------
 const loader = new THREE.TextureLoader();
+
 let tex1Loaded = false;
 let tex2Loaded = false;
 
@@ -237,31 +243,43 @@ loader.load(
 );
 
 // ---------------------------
-// Render Loop
+// Animation
 // ---------------------------
 function animate() {
   requestAnimationFrame(animate);
 
   const delta = Math.min(clock.getDelta(), 0.05);
 
-  // Dämpfung
-  velocity.x -= velocity.x * 10.0 * delta;
-  velocity.z -= velocity.z * 10.0 * delta;
+  // Bewegung nur wenn locked (sonst bleibt Kamera ruhig)
+  if (controls.isLocked === true) {
+    velocity.x -= velocity.x * 10.0 * delta;
+    velocity.z -= velocity.z * 10.0 * delta;
 
-  direction.z = Number(moveForward) - Number(moveBackward);
-  direction.x = Number(moveRight) - Number(moveLeft);
-  direction.normalize();
+    direction.z = Number(moveForward) - Number(moveBackward);
+    direction.x = Number(moveRight) - Number(moveLeft);
+    direction.normalize();
 
-  const currentSpeed = WALK_SPEED * (sprint ? SPRINT_MULT : 1);
+    const currentSpeed = WALK_SPEED * (sprint ? SPRINT_MULT : 1);
 
-  if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed * delta;
-  if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed * delta;
+    if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed * delta;
+    if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed * delta;
 
-  controls.moveRight(-velocity.x * delta);
-  controls.moveForward(-velocity.z * delta);
+    controls.moveRight(-velocity.x * delta);
+    controls.moveForward(-velocity.z * delta);
+
+    // Hopser / "Schwerkraft"
+    hopV -= GRAVITY * delta;
+    controls.getObject().position.y += hopV * delta;
+
+    if (controls.getObject().position.y < FLOOR_Y) {
+      controls.getObject().position.y = FLOOR_Y;
+      hopV = 0;
+    }
+  }
 
   renderer.render(scene, camera);
 }
+
 animate();
 
 // ---------------------------
