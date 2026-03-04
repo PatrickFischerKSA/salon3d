@@ -1,241 +1,218 @@
-import * as THREE from "../vendor/three.module.js";
-import { PointerLockControls } from "../vendor/PointerLockControls.js";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { PointerLockControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/PointerLockControls.js";
 
-let camera, scene, renderer, controls;
+// ------------------------------------------------------------
+// Salon3D – ES Modules Version (GitHub Pages kompatibel)
+// Erwartete Dateien:
+//   assets/img/salon1.jpg
+//   assets/img/salon2.jpg
+// ------------------------------------------------------------
 
-let moveForward = false;
-let moveBackward = false;
-let moveLeft = false;
-let moveRight = false;
+// Raumdimensionen (in "Metern")
+const ROOM_W = 14;
+const ROOM_H = 4;
+const ROOM_D = 10;
 
-const velocity = new THREE.Vector3();
-const direction = new THREE.Vector3();
+// Kamera-/Player-Setup
+const EYE_HEIGHT = 1.6;
+
+// Bewegung
+const SPEED = 4.0;
+const SPEED_FAST = 7.5;
+const DAMPING = 10.0;
+
+// "Teppich nach vorne ziehen" (Textur nach unten verschieben)
+// Mehr => Teppich kommt weiter in den Vordergrund (unten ins Bild)
+const CARPET_PULL = 0.18;
+
+// Feinjustierung falls Horizont/Komposition leicht verrutscht
+// Positive Werte schieben Textur minimal nach oben, negative nach unten
+const HORIZON_SHIFT = 0.00;
+
+// Assets
+const ASSET = {
+  wallA: "./assets/img/salon1.jpg",
+  wallB: "./assets/img/salon2.jpg",
+};
+
+// Szene
+let scene, camera, renderer, controls, room;
 const clock = new THREE.Clock();
 
-// Raumparameter
-const ROOM_SIZE = 24;
-const ROOM_HEIGHT = 8;
+// Input
+const keys = Object.create(null);
+let velX = 0;
+let velZ = 0;
 
 init();
 animate();
 
 function init() {
-  // Kamera
-  camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    2000
-  );
-  camera.position.set(0, 1.7, 0);
-
-  // Szene
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x101010);
+  scene.background = new THREE.Color(0x000000);
 
-  // Renderer
+  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 200);
+  camera.position.set(0, EYE_HEIGHT, 2.5);
+
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   document.body.appendChild(renderer.domElement);
 
-  // Licht (hell genug, damit Texturen sichtbar sind)
-  const ambient = new THREE.AmbientLight(0xffffff, 0.65);
-  scene.add(ambient);
-
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.9);
-  hemi.position.set(0, 20, 0);
-  scene.add(hemi);
-
-  const dir = new THREE.DirectionalLight(0xffffff, 0.6);
-  dir.position.set(10, 12, 6);
-  scene.add(dir);
-
-  // Controls
+  // Controls (Pointer Lock)
   controls = new PointerLockControls(camera, renderer.domElement);
   scene.add(controls.getObject());
 
   const btn = document.getElementById("enterBtn");
-  if (btn) btn.addEventListener("click", () => controls.lock());
+  if (btn) btn.onclick = () => controls.lock();
 
-  // Raum + Texturen
-  buildRoomWithTextures();
+  // Licht (dezentes Grundlicht)
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.15));
 
-  // Input
-  document.addEventListener("keydown", onKeyDown);
-  document.addEventListener("keyup", onKeyUp);
-  window.addEventListener("resize", onWindowResize);
+  // Raum laden/erstellen
+  buildRoom();
+
+  // Events
+  window.addEventListener("keydown", (e) => (keys[e.code] = true));
+  window.addEventListener("keyup", (e) => (keys[e.code] = false));
+  window.addEventListener("resize", onResize);
 }
 
-function buildRoomWithTextures() {
+function buildRoom() {
   const loader = new THREE.TextureLoader();
 
-  // ✅ KORREKT: Pfade relativ zur main.js auflösen (GitHub Pages-sicher)
-  const texUrlA = new URL("../img/salon1.jpg", import.meta.url).toString();
-  const texUrlB = new URL("../img/salon2.jpg", import.meta.url).toString();
+  const loadTexture = (url) =>
+    new Promise((resolve, reject) => {
+      loader.load(url, resolve, undefined, reject);
+    });
 
-  const wallTexA = loader.load(texUrlA);
-  const wallTexB = loader.load(texUrlB);
+  Promise.all([loadTexture(ASSET.wallA), loadTexture(ASSET.wallB)])
+    .then(([tA, tB]) => {
+      prepareTexture(tA);
+      prepareTexture(tB);
 
-  wallTexA.colorSpace = THREE.SRGBColorSpace;
-  wallTexB.colorSpace = THREE.SRGBColorSpace;
+      // Teppich nach vorne: Textur nach unten schieben
+      // (wir lassen repeat=1, clampen am Rand)
+      tA.offset.set(0, -CARPET_PULL + HORIZON_SHIFT);
+      tB.offset.set(0, -CARPET_PULL + HORIZON_SHIFT);
 
-  // Boden
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(ROOM_SIZE, ROOM_SIZE),
-    new THREE.MeshStandardMaterial({ color: 0x7a5a35, roughness: 0.95, metalness: 0 })
-  );
-  floor.rotation.x = -Math.PI / 2;
-  floor.position.y = 0;
-  scene.add(floor);
-
-  // Decke
-  const ceiling = new THREE.Mesh(
-    new THREE.PlaneGeometry(ROOM_SIZE, ROOM_SIZE),
-    new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 1, metalness: 0 })
-  );
-  ceiling.rotation.x = Math.PI / 2;
-  ceiling.position.y = ROOM_HEIGHT;
-  scene.add(ceiling);
-
-  // Wandmaterialien
-  const wallMatA = new THREE.MeshStandardMaterial({ map: wallTexA, roughness: 1, metalness: 0 });
-  const wallMatB = new THREE.MeshStandardMaterial({ map: wallTexB, roughness: 1, metalness: 0 });
-
-  const wallW = ROOM_SIZE;
-  const wallH = ROOM_HEIGHT;
-  const wallGeo = new THREE.PlaneGeometry(wallW, wallH);
-
-  const half = ROOM_SIZE / 2;
-  const wallY = ROOM_HEIGHT / 2;
-
-  // Innenansicht sicherstellen: DoubleSide (damit nie „unsichtbar“)
-  wallMatA.side = THREE.DoubleSide;
-  wallMatB.side = THREE.DoubleSide;
-
-  // Front (Z-)
-  const wallFront = new THREE.Mesh(wallGeo, wallMatA);
-  wallFront.position.set(0, wallY, -half);
-  scene.add(wallFront);
-
-  // Back (Z+)
-  const wallBack = new THREE.Mesh(wallGeo, wallMatA);
-  wallBack.position.set(0, wallY, +half);
-  wallBack.rotation.y = Math.PI;
-  scene.add(wallBack);
-
-  // Left (X-)
-  const wallLeft = new THREE.Mesh(wallGeo, wallMatB);
-  wallLeft.position.set(-half, wallY, 0);
-  wallLeft.rotation.y = Math.PI / 2;
-  scene.add(wallLeft);
-
-  // Right (X+)
-  const wallRight = new THREE.Mesh(wallGeo, wallMatB);
-  wallRight.position.set(+half, wallY, 0);
-  wallRight.rotation.y = -Math.PI / 2;
-  scene.add(wallRight);
-
-  // Sockelleiste (optional, hilft optisch)
-  const baseH = 1.0;
-  const baseGeo = new THREE.PlaneGeometry(wallW, baseH);
-  const baseMat = new THREE.MeshStandardMaterial({ color: 0xd9d2c8, roughness: 1, metalness: 0, side: THREE.DoubleSide });
-
-  const baseFront = new THREE.Mesh(baseGeo, baseMat);
-  baseFront.position.set(0, baseH / 2, -half + 0.02);
-  scene.add(baseFront);
-
-  const baseBack = new THREE.Mesh(baseGeo, baseMat);
-  baseBack.position.set(0, baseH / 2, +half - 0.02);
-  baseBack.rotation.y = Math.PI;
-  scene.add(baseBack);
-
-  const baseLeft = new THREE.Mesh(baseGeo, baseMat);
-  baseLeft.position.set(-half + 0.02, baseH / 2, 0);
-  baseLeft.rotation.y = Math.PI / 2;
-  scene.add(baseLeft);
-
-  const baseRight = new THREE.Mesh(baseGeo, baseMat);
-  baseRight.position.set(+half - 0.02, baseH / 2, 0);
-  baseRight.rotation.y = -Math.PI / 2;
-  scene.add(baseRight);
+      createRoomMesh(tA, tB);
+    })
+    .catch(() => {
+      // Fallback: grauer Raum
+      createFallbackRoom();
+    });
 }
 
-function onKeyDown(event) {
-  switch (event.code) {
-    case "ArrowUp":
-    case "KeyW":
-      moveForward = true;
-      break;
-    case "ArrowLeft":
-    case "KeyA":
-      moveLeft = true;
-      break;
-    case "ArrowDown":
-    case "KeyS":
-      moveBackward = true;
-      break;
-    case "ArrowRight":
-    case "KeyD":
-      moveRight = true;
-      break;
-  }
+function prepareTexture(t) {
+  // Wichtig: clampen, damit die Ränder nicht wiederholt werden
+  t.wrapS = THREE.ClampToEdgeWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+
+  // Stabil & scharf genug ohne Risiko
+  t.minFilter = THREE.LinearFilter;
+  t.magFilter = THREE.LinearFilter;
+
+  // Anisotropy hilft bei schrägen Blickwinkeln (optional, safe)
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+  t.needsUpdate = true;
 }
 
-function onKeyUp(event) {
-  switch (event.code) {
-    case "ArrowUp":
-    case "KeyW":
-      moveForward = false;
-      break;
-    case "ArrowLeft":
-    case "KeyA":
-      moveLeft = false;
-      break;
-    case "ArrowDown":
-    case "KeyS":
-      moveBackward = false;
-      break;
-    case "ArrowRight":
-    case "KeyD":
-      moveRight = false;
-      break;
-  }
+function createRoomMesh(tA, tB) {
+  // Innenraum-Box
+  const geo = new THREE.BoxGeometry(ROOM_W, ROOM_H, ROOM_D);
+
+  // Materialien: Wände mit Textur, Decke/Boden neutral (damit kein "Beige-Füllboden" sichtbar wird)
+  // Reihenfolge: [right, left, top, bottom, front, back]
+  const mats = [
+    new THREE.MeshBasicMaterial({ map: tB, side: THREE.BackSide }), // right
+    new THREE.MeshBasicMaterial({ map: tB, side: THREE.BackSide }), // left
+    new THREE.MeshBasicMaterial({ color: 0x050505, side: THREE.BackSide }), // top (sehr dunkel)
+    new THREE.MeshBasicMaterial({ color: 0x050505, side: THREE.BackSide }), // bottom (sehr dunkel)
+    new THREE.MeshBasicMaterial({ map: tA, side: THREE.BackSide }), // front
+    new THREE.MeshBasicMaterial({ map: tA, side: THREE.BackSide }), // back
+  ];
+
+  room = new THREE.Mesh(geo, mats);
+  room.position.set(0, ROOM_H / 2, 0);
+  scene.add(room);
+
+  // Startposition im Raum
+  controls.getObject().position.set(0, EYE_HEIGHT, 2.5);
 }
 
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+function createFallbackRoom() {
+  const geo = new THREE.BoxGeometry(ROOM_W, ROOM_H, ROOM_D);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x2a2a2a, side: THREE.BackSide });
+  room = new THREE.Mesh(geo, mat);
+  room.position.set(0, ROOM_H / 2, 0);
+  scene.add(room);
+
+  controls.getObject().position.set(0, EYE_HEIGHT, 2.5);
 }
 
 function animate() {
   requestAnimationFrame(animate);
 
-  const delta = clock.getDelta();
+  const dt = Math.min(0.05, clock.getDelta());
 
-  velocity.x -= velocity.x * 10.0 * delta;
-  velocity.z -= velocity.z * 10.0 * delta;
-
-  direction.z = Number(moveForward) - Number(moveBackward);
-  direction.x = Number(moveRight) - Number(moveLeft);
-  direction.normalize();
-
-  const speed = 10.0;
-
-  if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
-  if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
-
-  controls.moveRight(-velocity.x * delta);
-  controls.moveForward(-velocity.z * delta);
-
-  // grobe Begrenzung
-  const p = controls.getObject().position;
-  const half = ROOM_SIZE / 2 - 1.0;
-  p.x = Math.max(-half, Math.min(half, p.x));
-  p.z = Math.max(-half, Math.min(half, p.z));
-  p.y = 1.7;
+  if (controls.isLocked) {
+    updateMovement(dt);
+  }
 
   renderer.render(scene, camera);
+}
+
+function updateMovement(dt) {
+  // Dämpfung
+  velX -= velX * DAMPING * dt;
+  velZ -= velZ * DAMPING * dt;
+
+  const forward = keys["KeyW"] || keys["ArrowUp"];
+  const back = keys["KeyS"] || keys["ArrowDown"];
+  const right = keys["KeyD"] || keys["ArrowRight"];
+  const left = keys["KeyA"] || keys["ArrowLeft"];
+
+  const speed = keys["ShiftLeft"] || keys["ShiftRight"] ? SPEED_FAST : SPEED;
+
+  const dirZ = (forward ? 1 : 0) - (back ? 1 : 0);
+  const dirX = (right ? 1 : 0) - (left ? 1 : 0);
+
+  if (dirZ !== 0) velZ -= dirZ * speed * dt * 6;
+  if (dirX !== 0) velX -= dirX * speed * dt * 6;
+
+  controls.moveRight(-velX * dt);
+  controls.moveForward(-velZ * dt);
+
+  // Höhe fixieren
+  controls.getObject().position.y = EYE_HEIGHT;
+
+  // Im Raum bleiben
+  clampToRoom();
+
+  // Reset
+  if (keys["KeyR"]) {
+    controls.getObject().position.set(0, EYE_HEIGHT, 2.5);
+    velX = 0;
+    velZ = 0;
+    keys["KeyR"] = false;
+  }
+}
+
+function clampToRoom() {
+  const p = controls.getObject().position;
+  const halfW = ROOM_W / 2 - 0.6;
+  const halfD = ROOM_D / 2 - 0.6;
+
+  if (p.x > halfW) p.x = halfW;
+  if (p.x < -halfW) p.x = -halfW;
+  if (p.z > halfD) p.z = halfD;
+  if (p.z < -halfD) p.z = -halfD;
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 }
