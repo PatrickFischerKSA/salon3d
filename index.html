@@ -11,14 +11,17 @@
     <div class="title">Salon3D</div>
     <div class="controls">
       Klick ins Bild → Maus-Look (Pointer Lock)<br/>
-      WASD / Pfeile → bewegen · Shift → schneller · Space → “kleiner Hopser”<br/>
-      ESC → Maus frei · R → Reset Position
+      WASD / Pfeile → bewegen
     </div>
     <button id="enterBtn">Start / Maus aktivieren</button>
   </div>
 
-  <div id="crosshair" aria-hidden="true"></div>
+  <!-- Three.js (klassisch, ohne Module) -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <!-- PointerLockControls (klassisch, ohne Module) -->
+  <script src="https://unpkg.com/three@0.160.0/examples/js/controls/PointerLockControls.js"></script>
 
-  <script type="module" src="./assets/js/main.js"></script>
+  <!-- Dein Script (klassisch) -->
+  <script src="./assets/js/main.js"></script>
 </body>
 </html>
