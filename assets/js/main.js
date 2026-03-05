@@ -2,15 +2,13 @@
 // ------------------------------------------------------------
 // Voraussetzungen:
 // - /salon3d/assets/img/Salon_4.jpg existiert (Case-sensitiv!)
-// - index.html enthält #enterBtn und #status (wie bei dir)
+// - index.html enthält #enterBtn und #status
 //
 // Auto-Kalibrierung:
 // - Klicke im Overlay 4 Rückwand-Ecken: TL -> TR -> BR -> BL
-// - Script berechnet floorV, roomW, planeW/H und camZ (aus roomH + FOV)
-//
-// Hinweis:
-// - FOV bleibt dein "Look" Regler. Auto-Kalibrierung passt camZ so an,
-//   dass die Rückwand geometrisch passt.
+// - Script berechnet floorV, roomW, planeW/H und DISTANZ (aus roomH + FOV)
+// - WICHTIGER FIX: Backdrop wird auf Rückwand gelegt (backZ = -roomD/2)
+//                 Kamera bleibt IM Raum (camZ = 0)
 // ------------------------------------------------------------
 
 import * as THREE from "three";
@@ -54,23 +52,22 @@ function saveSettings(s) {
 }
 
 // ------------------------------------------------------------
-// Default calibration (guter Start)
+// Default calibration
 // ------------------------------------------------------------
 const defaults = {
   // camera
-  fov: 34, // realistischer Start
+  fov: 34,
   camY: 1.55,
-  camZ: 14.5,
+  camZ: 10.0,
 
   // backdrop plane
-  backZ: -28.0,
-  fitScale: 1.08, // Sicherheits-Füllung
+  backZ: -10.0,
+  fitScale: 1.08,
 
   // Foto-Floorline (V): wo im Foto Wand->Boden beginnt
-  // 0 = oben, 1 = unten
   floorV: 0.82,
 
-  // room box (Immersion)
+  // room box
   roomW: 14.0,
   roomD: 20.0,
   roomH: 3.6,
@@ -178,7 +175,6 @@ document.addEventListener("keydown", (e) => {
       hopV = 0;
       break;
 
-    // Auto-Kalibrier Overlay
     case "KeyC":
       openAutoCalibOverlay();
       break;
@@ -259,7 +255,7 @@ function cropTextureFromImage(img, rect, outW = 2048, outH = 2048, opts = {}) {
 let backdrop = null;
 let backdropMat = null;
 let guideLines = null;
-let sourceImage = null; // Image object
+let sourceImage = null;
 let sourceAspect = 16 / 9;
 
 function computeViewHeightAtDistance(dist) {
@@ -297,11 +293,8 @@ function rebuildGuides(planeW, planeH) {
   const verts = [];
   const yFloor = (0.5 - settings.floorV) * planeH;
 
-  // floor line across plane
   verts.push(-planeW / 2, yFloor, 0.001, planeW / 2, yFloor, 0.001);
-  // center vertical
   verts.push(0, -planeH / 2, 0.001, 0, planeH / 2, 0.001);
-  // center horizontal
   verts.push(-planeW / 2, 0, 0.001, planeW / 2, 0, 0.001);
 
   const geo = new THREE.BufferGeometry();
@@ -315,7 +308,7 @@ function rebuildGuides(planeW, planeH) {
 }
 
 // ------------------------------------------------------------
-// Room shell (sidewalls + floor + ceiling + trims)
+// Room shell
 // ------------------------------------------------------------
 const room = new THREE.Group();
 scene.add(room);
@@ -463,7 +456,7 @@ fill.position.set(-7, 6, 3);
 scene.add(fill);
 
 // ------------------------------------------------------------
-// Load Salon_4.jpg and build textures
+// Load Salon_4.jpg
 // ------------------------------------------------------------
 setStatus("Lade Salon_4.jpg …");
 
@@ -481,13 +474,13 @@ loader.load(
     sourceImage = img;
     sourceAspect = img.width / img.height;
 
-    // Backdrop: Wir nutzen das GESAMTE Foto (wichtig für Auto-Kalibrierung),
-    // damit die U/V Klick-Koordinaten exakt stimmen.
     const texBackdrop = tune(tex, { clampEdges: true });
     backdropMat = new THREE.MeshBasicMaterial({ map: texBackdrop });
 
-    // Create initial backdrop geometry from FOV + distance (frustum fit)
-    // Wir setzen planeH so, dass es den Viewport füllt (vor Auto-Kalibrierung).
+    // initial backdrop fit
+    camera.fov = settings.fov;
+    camera.updateProjectionMatrix();
+
     const dist = Math.abs(settings.backZ - camera.position.z);
     const viewH = computeViewHeightAtDistance(dist);
     const planeH = viewH * settings.fitScale;
@@ -495,10 +488,9 @@ loader.load(
 
     computeBackdropFromGeometry(planeW, planeH);
     backdrop.material = backdropMat;
-
     rebuildGuides(planeW, planeH);
 
-    // Material-Crops für Raumtexturen
+    // room textures
     texWallpaper = cropTextureFromImage(img, { x: 0.34, y: 0.22, w: 0.12, h: 0.18 }, 4096, 4096, {
       repeat: { x: settings.wallRepX, y: settings.wallRepY },
       clampEdges: false,
@@ -517,6 +509,9 @@ loader.load(
 
     buildRoomShell();
 
+    // ensure camera/controls inside room after load
+    controls.getObject().position.set(0, settings.camY, settings.camZ);
+
     setStatus("Szene bereit (Taste C = Auto-Kalibrierung)");
   },
   undefined,
@@ -527,7 +522,7 @@ loader.load(
 );
 
 // ------------------------------------------------------------
-// Calibration UI (Slider + Auto-Kalibrier Button)
+// Calibration UI
 // ------------------------------------------------------------
 let calibPanel = null;
 
@@ -620,42 +615,36 @@ function makeCalibUI() {
     });
   }
 
-  // Core match
   addSlider("FOV", "fov", 20, 60, 1);
   addSlider("camY", "camY", 1.2, 1.8, 0.01);
-  addSlider("camZ", "camZ", 6.0, 22.0, 0.1);
-  addSlider("backZ", "backZ", -10.0, -55.0, 0.1);
+  addSlider("camZ", "camZ", 0.0, 22.0, 0.1);
+
+  addSlider("backZ", "backZ", -6.0, -55.0, 0.1);
   addSlider("fitScale", "fitScale", 0.9, 1.25, 0.01);
   addSlider("floorV", "floorV", 0.60, 0.92, 0.001);
 
-  // shell
   addSlider("roomW", "roomW", 10.0, 22.0, 0.1);
-  addSlider("roomD", "roomD", 12.0, 30.0, 0.1);
+  addSlider("roomD", "roomD", 16.0, 30.0, 0.1);
   addSlider("roomH", "roomH", 3.0, 5.0, 0.05);
 
-  // repeats
   addSlider("wallRepX", "wallRepX", 1.0, 8.0, 0.1);
   addSlider("wallRepY", "wallRepY", 1.0, 6.0, 0.1);
   addSlider("floorRepX", "floorRepX", 1.0, 10.0, 0.1);
   addSlider("floorRepY", "floorRepY", 1.0, 10.0, 0.1);
 
-  // guides toggle
   const guides = wrap.querySelector("#g_guides");
   guides.addEventListener("change", () => {
     settings.showGuides = !!guides.checked;
     applyCalibration(true);
   });
 
-  // auto
   wrap.querySelector("#g_auto").addEventListener("click", () => openAutoCalibOverlay());
 
-  // save
   wrap.querySelector("#g_save").addEventListener("click", () => {
     saveSettings(settings);
     setStatus("Kalibrierung gespeichert");
   });
 
-  // reset
   wrap.querySelector("#g_reset").addEventListener("click", () => {
     localStorage.removeItem(LS_KEY);
     Object.keys(settings).forEach((k) => (settings[k] = defaults[k]));
@@ -669,21 +658,17 @@ makeCalibUI();
 // Apply calibration live
 // ------------------------------------------------------------
 function applyCalibration(rebuildBackdrop = false) {
-  // camera
   camera.fov = settings.fov;
   camera.position.y = settings.camY;
   camera.position.z = settings.camZ;
   camera.updateProjectionMatrix();
 
-  // renderer
   renderer.toneMappingExposure = settings.exposure;
 
-  // lights
   ambient.intensity = settings.ambient;
   key.intensity = settings.key;
   fill.intensity = settings.fill;
 
-  // repeats
   if (texWallpaper) {
     texWallpaper.wrapS = THREE.RepeatWrapping;
     texWallpaper.wrapT = THREE.RepeatWrapping;
@@ -697,9 +682,6 @@ function applyCalibration(rebuildBackdrop = false) {
     texWood.needsUpdate = true;
   }
 
-  // Backdrop rebuild:
-  // Standardmodus: planeH aus Frustum fit.
-  // Auto-Kalibrierung setzt planeW/H direkt (siehe applyAutoCalib()).
   if (rebuildBackdrop && backdrop && sourceImage) {
     const dist = Math.abs(settings.backZ - camera.position.z);
     const viewH = computeViewHeightAtDistance(dist);
@@ -708,18 +690,17 @@ function applyCalibration(rebuildBackdrop = false) {
 
     computeBackdropFromGeometry(planeW, planeH);
     if (backdropMat) backdrop.material = backdropMat;
-
     rebuildGuides(planeW, planeH);
   }
 
-  // rebuild shell
-  if (texWallpaper || texWood || texCeil || texRug) {
-    buildRoomShell();
-  }
+  if (texWallpaper || texWood || texCeil || texRug) buildRoomShell();
+
+  // keep controls aligned when unlocked too
+  controls.getObject().position.y = settings.camY;
 }
 
 // ------------------------------------------------------------
-// AUTO-KALIBRIERUNG (4 Klicks)
+// AUTO-KALIBRIERUNG (4 Klicks) — FIXED COORD SYSTEM
 // ------------------------------------------------------------
 let autoOverlay = null;
 let autoClicks = [];
@@ -732,7 +713,6 @@ function openAutoCalibOverlay() {
   if (autoOverlay) return;
 
   controls.unlock?.();
-
   autoClicks = [];
 
   const ov = document.createElement("div");
@@ -761,7 +741,7 @@ function openAutoCalibOverlay() {
       <div>
         <div style="font-weight:900;font-size:16px;">Auto-Kalibrierung (4 Klicks)</div>
         <div style="font-size:12px;opacity:0.85;line-height:1.25;margin-top:2px;">
-          Klicke die <b>Rückwand-Ecken</b> im Foto: <b>oben-links → oben-rechts → unten-rechts → unten-links</b>.
+          Klicke die <b>Rückwand-Ecken</b>: <b>oben-links → oben-rechts → unten-rechts → unten-links</b>.
           <br/>ESC = Abbrechen
         </div>
       </div>
@@ -780,7 +760,7 @@ function openAutoCalibOverlay() {
 
     <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
       <div style="font-size:12px;opacity:0.85;">
-        Nach 4 Klicks werden <b>floorV</b>, <b>roomW</b>, <b>planeW/H</b> und <b>camZ</b> automatisch gesetzt.
+        Nach 4 Klicks werden <b>floorV</b>, <b>roomW</b>, <b>planeW/H</b>, <b>roomD/backZ</b> & <b>camZ</b> korrekt gesetzt.
       </div>
       <button id="ac_undo" style="border:0;background:#e9e9e9;font-weight:900;padding:10px 12px;border-radius:10px;cursor:pointer;">
         Letzten entfernen
@@ -798,7 +778,6 @@ function openAutoCalibOverlay() {
   const canvas = panel.querySelector("#ac_canvas");
   const ctx = canvas.getContext("2d", { alpha: false });
 
-  // Fit image into canvas with letterboxing
   function resizeCanvas() {
     const rect = canvas.getBoundingClientRect();
     canvas.width = Math.floor(rect.width * (window.devicePixelRatio || 1));
@@ -807,7 +786,6 @@ function openAutoCalibOverlay() {
   }
 
   function draw() {
-    // clear
     ctx.fillStyle = "#111";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -831,13 +809,10 @@ function openAutoCalibOverlay() {
       offX = (cw - drawW) / 2;
     }
 
-    // image
     ctx.drawImage(img, offX, offY, drawW, drawH);
 
-    // markers
     for (let i = 0; i < autoClicks.length; i++) {
       const p = autoClicks[i];
-
       const x = offX + p.u * drawW;
       const y = offY + p.v * drawH;
 
@@ -851,7 +826,6 @@ function openAutoCalibOverlay() {
       ctx.fillText(String(i + 1), x - 4 * (window.devicePixelRatio || 1), y + 5 * (window.devicePixelRatio || 1));
     }
 
-    // polyline
     if (autoClicks.length >= 2) {
       ctx.beginPath();
       for (let i = 0; i < autoClicks.length; i++) {
@@ -866,8 +840,7 @@ function openAutoCalibOverlay() {
       ctx.stroke();
     }
 
-    // store for click conversion
-    canvas._fit = { offX, offY, drawW, drawH, cw, ch };
+    canvas._fit = { offX, offY, drawW, drawH };
   }
 
   function updateHint() {
@@ -888,78 +861,67 @@ function openAutoCalibOverlay() {
   }
 
   function applyAutoCalibFromClicks() {
-    // Erwartete Reihenfolge: TL, TR, BR, BL
     const TL = autoClicks[0];
     const TR = autoClicks[1];
     const BR = autoClicks[2];
     const BL = autoClicks[3];
 
-    // Stabilisierung: clamp
     const ceilingV = clamp((TL.v + TR.v) / 2, 0.0, 0.95);
     const floorV = clamp((BL.v + BR.v) / 2, 0.05, 1.0);
-
     const leftU = clamp((TL.u + BL.u) / 2, 0.0, 0.95);
     const rightU = clamp((TR.u + BR.u) / 2, 0.05, 1.0);
 
     const spanU = clamp(rightU - leftU, 0.05, 0.98);
     const spanV = clamp(floorV - ceilingV, 0.05, 0.98);
 
-    // 1) floorV setzen (Bodenlinie an y=0)
+    // 1) floorV setzen
     settings.floorV = floorV;
 
-    // 2) roomW aus roomH + Pixel-Aspect der Rückwand ableiten:
-    // PixelRatio(backwall) = (spanU*imgW) / (spanV*imgH) = (spanU/spanV) * imgAspect
+    // 2) Backwall Pixelratio -> roomW aus roomH
     const imgAspect = sourceAspect;
     const pixelRatio = (spanU / spanV) * imgAspect;
-
-    // roomH bleibt deine "echte" Höhe (Stil: hohe Zimmer)
-    // roomW berechnet:
     settings.roomW = clamp(settings.roomH * pixelRatio, 10.0, 22.0);
 
-    // 3) planeH so wählen, dass der Abschnitt (ceilingV..floorV) genau roomH hoch ist:
-    // planeH * spanV = roomH  => planeH = roomH / spanV
+    // 3) Plane so wählen, dass backwall-Ausschnitt exakt roomW x roomH ist
     const planeH = settings.roomH / spanV;
-
-    // planeW so, dass der Abschnitt (leftU..rightU) genau roomW breit ist:
-    // planeW * spanU = roomW  => planeW = roomW / spanU
     const planeW = settings.roomW / spanU;
 
-    // 4) camZ so, dass diese planeH bei deinem FOV in den Viewport passt (mit fitScale):
-    // viewH = planeH / fitScale  (weil planeH = viewH*fitScale)
-    // viewH = 2*dist*tan(fov/2)  => dist = (viewH/2)/tan(fov/2)
+    // 4) DISTANZ aus FOV + viewH
     const fovRad = THREE.MathUtils.degToRad(settings.fov);
     const viewH = planeH / settings.fitScale;
     const dist = (viewH / 2) / Math.tan(fovRad / 2);
 
-    // camZ = backZ + dist (weil Backdrop bei z=backZ liegt)
-    settings.camZ = settings.backZ + dist;
+    // 5) WICHTIGER FIX: Raumtiefe & Backdrop-Koordinate in Raumkoordinaten einhängen
+    // Backdrop liegt auf Rückwand: backZ = -roomD/2
+    // Kamera bleibt im Raumzentrum: camZ = 0
+    const roomD = clamp(2 * (dist + 1.2), 16.0, 30.0); // +Reserve, damit du nicht "klebst"
+    settings.roomD = roomD;
+    settings.backZ = -roomD / 2;
 
-    // roomD sinnvoll nachziehen (damit du vor dem Backdrop laufen kannst)
-    settings.roomD = clamp(Math.max(settings.roomW * 1.45, 16.0), 16.0, 30.0);
-
-    // Jetzt Backdrop exakt mit planeW/H bauen und room neu
+    settings.camZ = 0.0; // IM Raum
+    // set camera now
     camera.fov = settings.fov;
-    camera.position.y = settings.camY;
-    camera.position.z = settings.camZ;
+    camera.position.set(0, settings.camY, settings.camZ);
     camera.updateProjectionMatrix();
 
+    // Build backdrop exact geometry at correct backZ
     computeBackdropFromGeometry(planeW, planeH);
     if (backdropMat) backdrop.material = backdropMat;
-
     rebuildGuides(planeW, planeH);
+
     buildRoomShell();
 
-    // UI slider refresh: easiest = rebuild panel (damit values stimmen)
-    makeCalibUI();
+    // Controls sofort synchronisieren + in Box klemmen
+    controls.getObject().position.set(0, settings.camY, settings.camZ);
+    clampToShell(controls.getObject().position);
 
-    // speichern (so bleibt es nach Reload)
+    makeCalibUI();
     saveSettings(settings);
 
     setStatus("Auto-Kalibrierung angewendet & gespeichert");
     closeOverlay();
   }
 
-  // Events
   closeBtn.addEventListener("click", closeOverlay);
   undoBtn.addEventListener("click", () => {
     autoClicks.pop();
@@ -985,7 +947,6 @@ function openAutoCalibOverlay() {
     const x = (e.clientX - rect.left) * dpr;
     const y = (e.clientY - rect.top) * dpr;
 
-    // check inside image area
     const { offX, offY, drawW, drawH } = fit;
     if (x < offX || x > offX + drawW || y < offY || y > offY + drawH) return;
 
@@ -996,12 +957,9 @@ function openAutoCalibOverlay() {
     updateHint();
     draw();
 
-    if (autoClicks.length === 4) {
-      applyAutoCalibFromClicks();
-    }
+    if (autoClicks.length === 4) applyAutoCalibFromClicks();
   });
 
-  // initial paint
   updateHint();
   resizeCanvas();
   window.addEventListener("resize", resizeCanvas);
@@ -1054,7 +1012,5 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-
-  // backdrop via frustum-fit refresh (nur wenn vorhanden)
   applyCalibration(true);
 });
