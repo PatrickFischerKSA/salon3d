@@ -1,13 +1,12 @@
-// assets/js/main.js — Biedermeier-Look mit korrekten, sauberen Crops aus Salon_4.jpg
-// Ziel: KEINE “ganzer Raum als Tapete”-Repeats mehr, sondern echtes Tapetenmuster + Holz + Teppich + Polster.
-// Voraussetzung: index.html hat Importmap für "three" und "three/addons/"
+// assets/js/main.js — PHOTO-ROOM (Diorama) aus Salon_4.jpg
+// Ziel: sofort "wie das Foto" wirken → grosse Crops, NICHT kacheln, keine Tapeten-Repeats.
+// Voraussetzung: /salon3d/assets/img/Salon_4.jpg existiert (Case-sensitiv).
 
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 
 const statusEl = document.getElementById("status");
 const enterBtn = document.getElementById("enterBtn");
-
 const setStatus = (t) => {
   if (statusEl) statusEl.textContent = t;
   console.log("[STATUS]", t);
@@ -19,18 +18,21 @@ setStatus("Main geladen");
 // Renderer / Szene / Kamera
 // ------------------------------------------------------------
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a0a);
+scene.background = new THREE.Color(0x070707);
 
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 600);
-camera.position.set(0, 1.62, 8.2);
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.05, 600);
+camera.position.set(0, 1.62, 7.8);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.setClearColor(0x0a0a0a, 1);
-document.body.appendChild(renderer.domElement);
 
+// wichtig für "Foto-Look": Tonemapping + Exposure
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.10;
+
+document.body.appendChild(renderer.domElement);
 setStatus("Renderer OK");
 
 // ------------------------------------------------------------
@@ -87,7 +89,7 @@ document.addEventListener("keydown", (e) => {
       break;
 
     case "KeyR":
-      controls.getObject().position.set(0, EYE_Y, 8.2);
+      controls.getObject().position.set(0, EYE_Y, 7.8);
       velocity.set(0, 0, 0);
       hopV = 0;
       break;
@@ -121,586 +123,192 @@ document.addEventListener("keyup", (e) => {
 });
 
 // ------------------------------------------------------------
-// Raum-Masse
+// Raum-Masse (so dass Backwall wie Foto wirkt)
 // ------------------------------------------------------------
-const ROOM_W = 13.6;
-const ROOM_D = 18.0;
+const ROOM_W = 13.2;
+const ROOM_D = 17.4;
 const ROOM_H = 4.2;
 
 const halfW = ROOM_W / 2;
 const halfD = ROOM_D / 2;
-const WALL_PADDING = 0.40;
 
 function clampToRoom(pos) {
-  pos.x = THREE.MathUtils.clamp(pos.x, -halfW + WALL_PADDING, halfW - WALL_PADDING);
-  pos.z = THREE.MathUtils.clamp(pos.z, -halfD + WALL_PADDING, halfD - WALL_PADDING);
+  const pad = 0.45;
+  pos.x = THREE.MathUtils.clamp(pos.x, -halfW + pad, halfW - pad);
+  pos.z = THREE.MathUtils.clamp(pos.z, -halfD + pad, halfD - pad);
 }
 
 // ------------------------------------------------------------
-// Licht (weich + warm, Fenster links)
+// Licht (nur subtil! Foto liefert die Stimmung)
 // ------------------------------------------------------------
-scene.add(new THREE.AmbientLight(0xfff0e1, 0.60));
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
 
-const windowLight = new THREE.DirectionalLight(0xd9ecff, 0.78);
-windowLight.position.set(-9, 7, 6);
-scene.add(windowLight);
+const softKey = new THREE.DirectionalLight(0xfff2e6, 0.55);
+softKey.position.set(6, 7, 5);
+scene.add(softKey);
 
-const keyLight = new THREE.DirectionalLight(0xffdfbf, 0.62);
-keyLight.position.set(8, 7, 2);
-scene.add(keyLight);
+const fillCool = new THREE.DirectionalLight(0xddeeff, 0.25);
+fillCool.position.set(-7, 6, 3);
+scene.add(fillCool);
 
-const lampWarm = new THREE.PointLight(0xffd0a0, 1.10, 18, 2);
-lampWarm.position.set(4.8, 2.7, -0.7);
-scene.add(lampWarm);
-
-const fireGlow = new THREE.PointLight(0xffb27a, 0.60, 7, 2);
-fireGlow.position.set(0, 1.05, -halfD + 0.85);
-scene.add(fireGlow);
+// leichte Dunstkante nach hinten → “tiefer”
+scene.fog = new THREE.Fog(0x070707, 12, 55);
 
 // ------------------------------------------------------------
-// Textur-Qualität
+// Textur-Helfer (Crops, ohne Repeat)
 // ------------------------------------------------------------
 const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
-const TEX_BIG = 4096;
-const TEX_MED = 2048;
-
-function tuneTexture(tex, { repeat = null } = {}) {
+function tune(tex) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = MAX_ANISO;
-
   tex.generateMipmaps = true;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.magFilter = THREE.LinearFilter;
-
-  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
-
-  if (repeat) {
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(repeat.x, repeat.y);
-  }
-
+  tex.wrapS = THREE.ClampToEdgeWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
   tex.needsUpdate = true;
   return tex;
 }
 
-function cropTextureFromImage(img, rect, outW, outH, repeat = null) {
-  const sx = Math.max(0, Math.min(1, rect.x));
-  const sy = Math.max(0, Math.min(1, rect.y));
-  const sw = Math.max(0, Math.min(1 - sx, rect.w));
-  const sh = Math.max(0, Math.min(1 - sy, rect.h));
-
+function cropTextureFromImage(img, rect, outW = 2048, outH = 2048) {
   const canvas = document.createElement("canvas");
   canvas.width = outW;
   canvas.height = outH;
   const ctx = canvas.getContext("2d", { alpha: false });
 
-  const px = Math.floor(img.width * sx);
-  const py = Math.floor(img.height * sy);
-  const pw = Math.floor(img.width * sw);
-  const ph = Math.floor(img.height * sh);
+  const px = Math.floor(img.width * rect.x);
+  const py = Math.floor(img.height * rect.y);
+  const pw = Math.floor(img.width * rect.w);
+  const ph = Math.floor(img.height * rect.h);
 
   ctx.drawImage(img, px, py, pw, ph, 0, 0, outW, outH);
 
   const tex = new THREE.CanvasTexture(canvas);
-  return tuneTexture(tex, { repeat });
+  return tune(tex);
 }
 
 // ------------------------------------------------------------
-// Materialien (Fallbacks)
-// ------------------------------------------------------------
-const matCeiling = new THREE.MeshStandardMaterial({ color: 0xd3ccc2, roughness: 0.98, metalness: 0.0 });
-
-const matWallTop = new THREE.MeshStandardMaterial({ color: 0xcfc3b7, roughness: 0.95, metalness: 0.0 });
-const matWallBottom = new THREE.MeshStandardMaterial({ color: 0x9a8f84, roughness: 0.92, metalness: 0.0 });
-
-const matTrim = new THREE.MeshStandardMaterial({ color: 0xbfb5aa, roughness: 0.92, metalness: 0.0 });
-
-const matWood = new THREE.MeshStandardMaterial({ color: 0x4a2b1a, roughness: 0.78, metalness: 0.0 });
-const matWoodVeneer = new THREE.MeshStandardMaterial({ color: 0x5a3220, roughness: 0.75, metalness: 0.0 });
-
-const matBrass = new THREE.MeshStandardMaterial({ color: 0xb08a3a, roughness: 0.35, metalness: 0.35 });
-
-const matUpholstery = new THREE.MeshStandardMaterial({ color: 0xb2a18b, roughness: 0.92, metalness: 0.0 });
-const matUpholsteryAlt = new THREE.MeshStandardMaterial({ color: 0x9f8f7c, roughness: 0.92, metalness: 0.0 });
-
-const matMarble = new THREE.MeshStandardMaterial({ color: 0xded8d2, roughness: 0.35, metalness: 0.0 });
-const matFireBlack = new THREE.MeshStandardMaterial({ color: 0x171615, roughness: 0.85, metalness: 0.05 });
-
-// ------------------------------------------------------------
-// Raum-Geometrie
+// Geometrie: Photo-Room (5 Planes) + Trim
 // ------------------------------------------------------------
 const room = new THREE.Group();
 scene.add(room);
 
-// Boden
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(ROOM_W, ROOM_D),
-  new THREE.MeshStandardMaterial({ color: 0x5c3b24, roughness: 0.80 })
-);
-floor.rotation.x = -Math.PI / 2;
-floor.position.y = 0;
-room.add(floor);
+const trimMat = new THREE.MeshStandardMaterial({ color: 0xc8bfb4, roughness: 0.92, metalness: 0.0 });
+const darkBaseMat = new THREE.MeshStandardMaterial({ color: 0x7f776f, roughness: 0.92, metalness: 0.0 });
 
-// Decke
-const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), matCeiling);
-ceiling.rotation.x = Math.PI / 2;
-ceiling.position.y = ROOM_H;
-room.add(ceiling);
-
-// Wand-Höhen
-const wainscotH = 1.05;
-const upperH = ROOM_H - wainscotH;
-
-function addWallPlane(width, height, material, x, y, z, ry) {
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+function addPlane(w, h, mat, x, y, z, ry) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
   m.position.set(x, y, z);
   m.rotation.y = ry;
   room.add(m);
   return m;
 }
 
-addWallPlane(ROOM_W, wainscotH, matWallBottom, 0, wainscotH / 2, -halfD, 0);
-addWallPlane(ROOM_W, upperH, matWallTop, 0, wainscotH + upperH / 2, -halfD, 0);
+// placeholders → werden nach dem Laden ersetzt
+const backWall = addPlane(ROOM_W, ROOM_H, new THREE.MeshStandardMaterial({ color: 0x3a3836, roughness: 1 }), 0, ROOM_H / 2, -halfD, 0);
+const frontWall = addPlane(ROOM_W, ROOM_H, new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 1 }), 0, ROOM_H / 2, halfD, Math.PI);
 
-addWallPlane(ROOM_W, wainscotH, matWallBottom, 0, wainscotH / 2, halfD, Math.PI);
-addWallPlane(ROOM_W, upperH, matWallTop, 0, wainscotH + upperH / 2, halfD, Math.PI);
+const leftWall = addPlane(ROOM_D, ROOM_H, new THREE.MeshStandardMaterial({ color: 0x3a3836, roughness: 1 }), -halfW, ROOM_H / 2, 0, Math.PI / 2);
+const rightWall = addPlane(ROOM_D, ROOM_H, new THREE.MeshStandardMaterial({ color: 0x3a3836, roughness: 1 }), halfW, ROOM_H / 2, 0, -Math.PI / 2);
 
-addWallPlane(ROOM_D, wainscotH, matWallBottom, -halfW, wainscotH / 2, 0, Math.PI / 2);
-addWallPlane(ROOM_D, upperH, matWallTop, -halfW, wainscotH + upperH / 2, 0, Math.PI / 2);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x2a2623, roughness: 0.95 }));
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = 0;
+room.add(floor);
 
-addWallPlane(ROOM_D, wainscotH, matWallBottom, halfW, wainscotH / 2, 0, -Math.PI / 2);
-addWallPlane(ROOM_D, upperH, matWallTop, halfW, wainscotH + upperH / 2, 0, -Math.PI / 2);
+const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), new THREE.MeshStandardMaterial({ color: 0xafa79e, roughness: 0.98 }));
+ceiling.rotation.x = Math.PI / 2;
+ceiling.position.y = ROOM_H;
+room.add(ceiling);
 
-// Sockel + Stuckleiste
-const baseboardH = 0.12;
-const baseboardT = 0.06;
-const corniceH = 0.14;
-const corniceT = 0.08;
-
-function addTrimBox(w, h, d, x, y, z) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matTrim);
+// Sockelleiste (damit Foto-Wände nicht “schweben”)
+const baseH = 0.14;
+const baseT = 0.06;
+function addTrimBox(w, h, d, x, y, z, mat) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   m.position.set(x, y, z);
   room.add(m);
   return m;
 }
+addTrimBox(ROOM_W, baseH, baseT, 0, baseH / 2, -halfD + baseT / 2, darkBaseMat);
+addTrimBox(ROOM_W, baseH, baseT, 0, baseH / 2, halfD - baseT / 2, darkBaseMat);
+addTrimBox(baseT, baseH, ROOM_D, -halfW + baseT / 2, baseH / 2, 0, darkBaseMat);
+addTrimBox(baseT, baseH, ROOM_D, halfW - baseT / 2, baseH / 2, 0, darkBaseMat);
 
-addTrimBox(ROOM_W, baseboardH, baseboardT, 0, baseboardH / 2, -halfD + baseboardT / 2);
-addTrimBox(ROOM_W, baseboardH, baseboardT, 0, baseboardH / 2, halfD - baseboardT / 2);
-addTrimBox(baseboardT, baseboardH, ROOM_D, -halfW + baseboardT / 2, baseboardH / 2, 0);
-addTrimBox(baseboardT, baseboardH, ROOM_D, halfW - baseboardT / 2, baseboardH / 2, 0);
+// schmale “Stuckleiste” oben
+const cornH = 0.10;
+const cornT = 0.08;
+addTrimBox(ROOM_W, cornH, cornT, 0, ROOM_H - cornH / 2, -halfD + cornT / 2, trimMat);
+addTrimBox(ROOM_W, cornH, cornT, 0, ROOM_H - cornH / 2, halfD - cornT / 2, trimMat);
+addTrimBox(cornT, cornH, ROOM_D, -halfW + cornT / 2, ROOM_H - cornH / 2, 0, trimMat);
+addTrimBox(cornT, cornH, ROOM_D, halfW - cornT / 2, ROOM_H - cornH / 2, 0, trimMat);
 
-addTrimBox(ROOM_W, corniceH, corniceT, 0, ROOM_H - corniceH / 2, -halfD + corniceT / 2);
-addTrimBox(ROOM_W, corniceH, corniceT, 0, ROOM_H - corniceH / 2, halfD - corniceT / 2);
-addTrimBox(corniceT, corniceH, ROOM_D, -halfW + corniceT / 2, ROOM_H - corniceH / 2, 0);
-addTrimBox(corniceT, corniceH, ROOM_D, halfW - corniceT / 2, ROOM_H - corniceH / 2, 0);
-
-// Fenster links (Lichtfläche + Vorhang)
-const windowOpening = new THREE.Mesh(
-  new THREE.PlaneGeometry(2.1, 3.0),
-  new THREE.MeshStandardMaterial({
-    color: 0xd8ebff,
-    roughness: 0.25,
-    metalness: 0.0,
-    emissive: 0x0f2236,
-    emissiveIntensity: 0.28,
-  })
-);
-windowOpening.position.set(-halfW + 0.01, 2.05, -5.2);
-windowOpening.rotation.y = Math.PI / 2;
-room.add(windowOpening);
-
-const curtain = new THREE.Mesh(
-  new THREE.PlaneGeometry(1.0, 3.25),
-  new THREE.MeshStandardMaterial({ color: 0x7f6153, roughness: 0.95, metalness: 0.0 })
-);
-curtain.position.set(-halfW + 0.03, 2.02, -6.2);
-curtain.rotation.y = Math.PI / 2;
-room.add(curtain);
-
-// Teppich (Plane)
-const rug = new THREE.Mesh(
-  new THREE.PlaneGeometry(7.9, 6.5),
-  new THREE.MeshStandardMaterial({ color: 0x7b1f1f, roughness: 0.95 })
-);
+// ------------------------------------------------------------
+// Teppich extra als eigene Plane (damit er nicht “mit dem Boden” verzerrt)
+// ------------------------------------------------------------
+const rug = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 6.8), new THREE.MeshStandardMaterial({ color: 0x5a1b1b, roughness: 0.98 }));
 rug.rotation.x = -Math.PI / 2;
 rug.position.set(0, 0.012, -2.2);
 room.add(rug);
 
 // ------------------------------------------------------------
-// Kamin
-// ------------------------------------------------------------
-const fireplace = new THREE.Group();
-room.add(fireplace);
-
-const mantel = new THREE.Mesh(new THREE.BoxGeometry(3.25, 2.15, 0.60), matMarble);
-mantel.position.set(0, 1.05, -halfD + 0.40);
-fireplace.add(mantel);
-
-const mantelStep = new THREE.Mesh(new THREE.BoxGeometry(3.45, 0.10, 0.72), matMarble);
-mantelStep.position.set(0, 2.05, -halfD + 0.40);
-fireplace.add(mantelStep);
-
-const inner = new THREE.Mesh(new THREE.BoxGeometry(1.75, 1.28, 0.45), matFireBlack);
-inner.position.set(0, 0.80, -halfD + 0.62);
-fireplace.add(inner);
-
-// Glut
-const emberGeo = new THREE.SphereGeometry(0.06, 10, 10);
-const emberMat = new THREE.MeshStandardMaterial({
-  color: 0xff6d3a,
-  roughness: 0.6,
-  emissive: 0x331000,
-  emissiveIntensity: 0.38,
-});
-for (let i = 0; i < 26; i++) {
-  const e = new THREE.Mesh(emberGeo, emberMat);
-  e.position.set(
-    (Math.random() - 0.5) * 0.90,
-    0.52 + Math.random() * 0.26,
-    -halfD + 0.72 + (Math.random() - 0.5) * 0.14
-  );
-  fireplace.add(e);
-}
-
-// ------------------------------------------------------------
-// Möbel (wie bisher)
-// ------------------------------------------------------------
-function roundedBoxGeometry(w, h, d, r = 0.12, seg = 8) {
-  const hw = w / 2;
-  const hd = d / 2;
-  const rr = Math.min(r, hw * 0.45, hd * 0.45);
-
-  const shape = new THREE.Shape();
-  shape.moveTo(-hw + rr, -hd);
-  shape.lineTo(hw - rr, -hd);
-  shape.quadraticCurveTo(hw, -hd, hw, -hd + rr);
-  shape.lineTo(hw, hd - rr);
-  shape.quadraticCurveTo(hw, hd, hw - rr, hd);
-  shape.lineTo(-hw + rr, hd);
-  shape.quadraticCurveTo(-hw, hd, -hw, hd - rr);
-  shape.lineTo(-hw, -hd + rr);
-  shape.quadraticCurveTo(-hw, -hd, -hw + rr, -hd);
-
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false, steps: 1, curveSegments: seg });
-  geo.rotateX(-Math.PI / 2);
-  geo.translate(0, h / 2, 0);
-  geo.computeVertexNormals();
-  return geo;
-}
-
-function makeTurnedLeg(height = 0.55) {
-  const pts = [
-    new THREE.Vector2(0.06, 0.00),
-    new THREE.Vector2(0.07, 0.06),
-    new THREE.Vector2(0.05, 0.12),
-    new THREE.Vector2(0.08, 0.20),
-    new THREE.Vector2(0.06, 0.30),
-    new THREE.Vector2(0.09, 0.40),
-    new THREE.Vector2(0.06, height),
-  ];
-  const geo = new THREE.LatheGeometry(pts, 24);
-  return new THREE.Mesh(geo, matWoodVeneer);
-}
-
-function makeBiedermeierSofa() {
-  const g = new THREE.Group();
-
-  const base = new THREE.Mesh(roundedBoxGeometry(3.35, 0.22, 1.12, 0.16), matWood);
-  base.position.y = 0.40;
-  g.add(base);
-
-  const seat = new THREE.Mesh(roundedBoxGeometry(3.18, 0.22, 0.98, 0.20), matUpholsteryAlt);
-  seat.position.y = 0.58;
-  g.add(seat);
-
-  const back = new THREE.Mesh(roundedBoxGeometry(3.08, 0.68, 0.22, 0.18), matUpholsteryAlt);
-  back.position.set(0, 1.05, -0.43);
-  back.rotation.x = -0.06;
-  g.add(back);
-
-  function armRoll(side = 1) {
-    const arm = new THREE.Group();
-
-    const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.95, 28), matUpholsteryAlt);
-    roll.rotation.z = Math.PI / 2;
-    roll.position.set(0.0, 0.95, 0.05);
-    arm.add(roll);
-
-    const armBody = new THREE.Mesh(roundedBoxGeometry(0.42, 0.60, 1.05, 0.18), matUpholsteryAlt);
-    armBody.position.set(0.0, 0.70, 0.0);
-    arm.add(armBody);
-
-    const armPlinth = new THREE.Mesh(roundedBoxGeometry(0.44, 0.16, 1.08, 0.12), matWood);
-    armPlinth.position.set(0.0, 0.44, 0.0);
-    arm.add(armPlinth);
-
-    arm.position.x = side * 1.57;
-    return arm;
-  }
-
-  g.add(armRoll(-1));
-  g.add(armRoll(1));
-
-  const legs = [
-    [-1.45, 0, 0.40],
-    [1.45, 0, 0.40],
-    [-1.45, 0, -0.40],
-    [1.45, 0, -0.40],
-  ];
-  for (const [x, y, z] of legs) {
-    const leg = makeTurnedLeg(0.52);
-    leg.position.set(x, y, z);
-    g.add(leg);
-  }
-
-  return g;
-}
-
-function makeBiedermeierChair() {
-  const g = new THREE.Group();
-
-  const seatFrame = new THREE.Mesh(roundedBoxGeometry(1.08, 0.18, 0.95, 0.16), matWood);
-  seatFrame.position.y = 0.56;
-  g.add(seatFrame);
-
-  const seat = new THREE.Mesh(roundedBoxGeometry(1.00, 0.18, 0.86, 0.18), matUpholstery);
-  seat.position.y = 0.70;
-  g.add(seat);
-
-  const backShell = new THREE.Mesh(roundedBoxGeometry(1.02, 0.62, 0.12, 0.12), matWoodVeneer);
-  backShell.position.set(0, 1.10, -0.38);
-  backShell.rotation.x = -0.08;
-  g.add(backShell);
-
-  const backPad = new THREE.Mesh(roundedBoxGeometry(0.92, 0.54, 0.10, 0.12), matUpholstery);
-  backPad.position.set(0, 1.10, -0.36);
-  backPad.rotation.x = -0.08;
-  g.add(backPad);
-
-  const armCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.46, 1.05, -0.10),
-    new THREE.Vector3(-0.52, 0.98, 0.15),
-    new THREE.Vector3(-0.40, 0.86, 0.35),
-  ]);
-  const armGeo = new THREE.TubeGeometry(armCurve, 26, 0.045, 12, false);
-  const armL = new THREE.Mesh(armGeo, matWoodVeneer);
-  g.add(armL);
-
-  const armR = armL.clone();
-  armR.scale.x = -1;
-  g.add(armR);
-
-  const legOffsets = [
-    [-0.44, 0.0, 0.34],
-    [0.44, 0.0, 0.34],
-    [-0.44, 0.0, -0.34],
-    [0.44, 0.0, -0.34],
-  ];
-  for (const [x, y, z] of legOffsets) {
-    const leg = makeTurnedLeg(0.56);
-    leg.position.set(x, y, z);
-    g.add(leg);
-  }
-
-  return g;
-}
-
-function makeBiedermeierSideboard(w, h, d) {
-  const g = new THREE.Group();
-
-  const body = new THREE.Mesh(roundedBoxGeometry(w, h, d, 0.14), matWood);
-  body.position.y = h / 2;
-  g.add(body);
-
-  const panel = new THREE.Mesh(roundedBoxGeometry(w * 0.88, h * 0.46, 0.06, 0.12), matWoodVeneer);
-  panel.position.set(0, h * 0.58, d / 2 + 0.01);
-  g.add(panel);
-
-  const line = new THREE.Mesh(new THREE.BoxGeometry(w * 0.90, 0.02, 0.02), matBrass);
-  line.position.set(0, h * 0.40, d / 2 + 0.05);
-  g.add(line);
-
-  const knobGeo = new THREE.SphereGeometry(0.03, 12, 12);
-  for (const sx of [-0.18, 0.18]) {
-    const k = new THREE.Mesh(knobGeo, matBrass);
-    k.position.set(sx * w, h * 0.40, d / 2 + 0.06);
-    g.add(k);
-  }
-
-  const legPos = [
-    [-w * 0.40, 0, d * 0.35],
-    [w * 0.40, 0, d * 0.35],
-    [-w * 0.40, 0, -d * 0.35],
-    [w * 0.40, 0, -d * 0.35],
-  ];
-  for (const [x, y, z] of legPos) {
-    const leg = makeTurnedLeg(0.42);
-    leg.position.set(x, y, z);
-    g.add(leg);
-  }
-
-  return g;
-}
-
-// Anordnung
-const sofa = makeBiedermeierSofa();
-sofa.position.set(halfW - 2.15, 0.0, -0.85);
-sofa.rotation.y = -Math.PI / 2;
-room.add(sofa);
-
-const chairFrontLeft = makeBiedermeierChair();
-chairFrontLeft.position.set(-halfW + 2.05, 0.0, 3.05);
-chairFrontLeft.rotation.y = Math.PI / 6;
-room.add(chairFrontLeft);
-
-const chairA = makeBiedermeierChair();
-chairA.position.set(-2.15, 0.0, -5.35);
-chairA.rotation.y = Math.PI / 10;
-room.add(chairA);
-
-const chairB = makeBiedermeierChair();
-chairB.position.set(2.15, 0.0, -5.35);
-chairB.rotation.y = -Math.PI / 10;
-room.add(chairB);
-
-const sideboardL = makeBiedermeierSideboard(2.75, 0.88, 0.62);
-sideboardL.position.set(-halfW + 2.65, 0.0, -4.85);
-room.add(sideboardL);
-
-const sideboardR = makeBiedermeierSideboard(3.70, 0.78, 0.62);
-sideboardR.position.set(halfW - 2.35, 0.0, -4.95);
-room.add(sideboardR);
-
-const cabinet = makeBiedermeierSideboard(1.25, 2.45, 0.60);
-cabinet.position.set(-halfW + 2.35, 0.0, -6.45);
-room.add(cabinet);
-
-// Lampe
-const lamp = new THREE.Group();
-const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 0.10, 20), matBrass);
-lampBase.position.y = 0.05;
-lamp.add(lampBase);
-
-const lampStand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.30, 18), matBrass);
-lampStand.position.y = 0.70;
-lamp.add(lampStand);
-
-const lampShade = new THREE.Mesh(
-  new THREE.ConeGeometry(0.34, 0.48, 22),
-  new THREE.MeshStandardMaterial({ color: 0xe8dfd1, roughness: 0.8, metalness: 0.0 })
-);
-lampShade.position.y = 1.45;
-lamp.add(lampShade);
-
-lamp.position.set(halfW - 3.45, 0.0, -1.05);
-room.add(lamp);
-
-// ------------------------------------------------------------
-// Bilder (Rahmen + Fläche) — optional, bleiben schlicht
-// ------------------------------------------------------------
-function makeFramedPainting(w, h, texture, x, y, z, ry) {
-  tuneTexture(texture);
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.18, h + 0.18, 0.08), matBrass);
-  frame.position.set(x, y, z);
-  frame.rotation.y = ry;
-  room.add(frame);
-
-  const pic = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: texture }));
-  pic.position.set(x, y, z + (ry === 0 ? 0.045 : -0.045));
-  pic.rotation.y = ry;
-  room.add(pic);
-}
-
-// ------------------------------------------------------------
-// Salon_4.jpg laden -> KORREKTE, SAUBERE Crops setzen
+// Salon_4.jpg laden und als Diorama aufteilen
 // ------------------------------------------------------------
 setStatus("Lade Salon_4.jpg …");
 
 const loader = new THREE.TextureLoader();
 loader.load(
   "/salon3d/assets/img/Salon_4.jpg",
-  (refTex) => {
-    const img = refTex.image;
+  (t) => {
+    const img = t.image;
     if (!img || !img.width || !img.height) {
       setStatus("FEHLER: Bilddaten fehlen");
       return;
     }
 
-    // Diese Rects sind aus dem Bild (1600×896) so gewählt,
-    // dass NUR das jeweilige Material drin ist (keine Rahmen/Kamin/Decke als “Tapete”).
-    // Tapete: reines Muster (Crop um x=540..720, y=210..390)
-    const wallpaperTex = cropTextureFromImage(
-      img,
-      { x: 540 / 1600, y: 210 / 896, w: 180 / 1600, h: 180 / 896 },
-      TEX_BIG,
-      TEX_BIG,
-      { x: 2.1, y: 1.6 }
-    );
+    // Bild ist bei dir 1600×896.
+    // Wir nehmen grosse Bereiche:
+    // - Backwall: zentrale Ansicht inkl. Kamin
+    // - Sidewalls: links/rechts mit Tapete + Details
+    // - Floor: Holz unten
+    // - Ceiling: oben (Decke / Stuck)
+    // - Rug: Teppichzentrum
+    const W = img.width;
+    const H = img.height;
 
-    // Holz: möglichst “clean” rechts unten (x=1420..1600, y=790..896)
-    const woodTex = cropTextureFromImage(
-      img,
-      { x: 1420 / 1600, y: 790 / 896, w: 180 / 1600, h: 106 / 896 },
-      TEX_BIG,
-      TEX_BIG,
-      { x: 3.8, y: 3.0 }
-    );
-    // Dielenrichtung
-    woodTex.rotation = Math.PI / 2;
-    woodTex.center.set(0.5, 0.5);
-    woodTex.needsUpdate = true;
+    const texBack = cropTextureFromImage(img, { x: 0.12, y: 0.08, w: 0.76, h: 0.60 }, 4096, 2048);
+    const texLeft = cropTextureFromImage(img, { x: 0.00, y: 0.10, w: 0.30, h: 0.62 }, 4096, 2048);
+    const texRight = cropTextureFromImage(img, { x: 0.70, y: 0.10, w: 0.30, h: 0.62 }, 4096, 2048);
 
-    // Teppich: Zentrum (x=520..1080, y=640..880) — ohne Möbel
-    const rugTex = cropTextureFromImage(
-      img,
-      { x: 520 / 1600, y: 640 / 896, w: 560 / 1600, h: 240 / 896 },
-      TEX_MED,
-      TEX_MED,
-      null
-    );
+    const texFloor = cropTextureFromImage(img, { x: 0.08, y: 0.72, w: 0.84, h: 0.26 }, 4096, 4096);
+    // Dielenrichtung “stabilisieren”
+    texFloor.rotation = Math.PI / 2;
+    texFloor.center.set(0.5, 0.5);
+    texFloor.needsUpdate = true;
 
-    // Polster: so “clean” wie möglich (x=1280..1395, y=520..610)
-    const upholsteryTex = cropTextureFromImage(
-      img,
-      { x: 1280 / 1600, y: 520 / 896, w: 115 / 1600, h: 90 / 896 },
-      TEX_BIG,
-      TEX_BIG,
-      { x: 1.2, y: 1.2 }
-    );
+    const texCeil = cropTextureFromImage(img, { x: 0.18, y: 0.00, w: 0.64, h: 0.18 }, 2048, 2048);
 
-    // Apply
-    matWallTop.map = wallpaperTex;
-    matWallTop.needsUpdate = true;
+    const texRug = cropTextureFromImage(img, { x: 0.28, y: 0.62, w: 0.44, h: 0.34 }, 2048, 2048);
 
-    floor.material = new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.80, metalness: 0.0 });
-    floor.material.needsUpdate = true;
+    // Wichtig: Foto als “diffuse” → MeshStandardMaterial geht, aber roughness hoch halten
+    backWall.material = new THREE.MeshStandardMaterial({ map: texBack, roughness: 0.95, metalness: 0.0 });
+    leftWall.material = new THREE.MeshStandardMaterial({ map: texLeft, roughness: 0.95, metalness: 0.0 });
+    rightWall.material = new THREE.MeshStandardMaterial({ map: texRight, roughness: 0.95, metalness: 0.0 });
 
-    rug.material = new THREE.MeshStandardMaterial({ map: rugTex, roughness: 0.95, metalness: 0.0 });
-    rug.material.needsUpdate = true;
+    // Frontwall bleibt dunkel (sonst wirkt es wie eine “Tapetenbox”)
+    frontWall.material = new THREE.MeshStandardMaterial({ color: 0x121212, roughness: 1.0, metalness: 0.0 });
 
-    matUpholstery.map = upholsteryTex;
-    matUpholstery.needsUpdate = true;
+    floor.material = new THREE.MeshStandardMaterial({ map: texFloor, roughness: 0.88, metalness: 0.0 });
+    ceiling.material = new THREE.MeshStandardMaterial({ map: texCeil, roughness: 0.98, metalness: 0.0 });
 
-    matUpholsteryAlt.map = upholsteryTex;
-    matUpholsteryAlt.needsUpdate = true;
-
-    // Optional: ein Bild über dem Kamin aus dem Foto (nur als “Platzhalter”)
-    const paintingCenterTex = cropTextureFromImage(
-      img,
-      { x: 560 / 1600, y: 150 / 896, w: 480 / 1600, h: 210 / 896 },
-      TEX_MED,
-      TEX_MED,
-      null
-    );
-    makeFramedPainting(2.8, 1.55, paintingCenterTex, 0, 2.65, -halfD + 0.02, 0);
+    rug.material = new THREE.MeshStandardMaterial({ map: texRug, roughness: 0.98, metalness: 0.0 });
 
     setStatus("Szene bereit");
   },
   undefined,
   (err) => {
     console.error(err);
-    setStatus("FEHLER: /assets/img/Salon_4.jpg lädt nicht (Pfad/Name?)");
+    setStatus("FEHLER: Salon_4.jpg lädt nicht (Pfad/Name?)");
   }
 );
 
@@ -712,7 +320,7 @@ function animate() {
 
   const delta = Math.min(clock.getDelta(), 0.05);
 
-  if (controls.isLocked === true) {
+  if (controls.isLocked) {
     velocity.x -= velocity.x * 10.0 * delta;
     velocity.z -= velocity.z * 10.0 * delta;
 
@@ -720,10 +328,10 @@ function animate() {
     direction.x = Number(moveRight) - Number(moveLeft);
     direction.normalize();
 
-    const currentSpeed = WALK_SPEED * (sprint ? SPRINT_MULT : 1);
+    const speed = WALK_SPEED * (sprint ? SPRINT_MULT : 1);
 
-    if (moveForward || moveBackward) velocity.z -= direction.z * currentSpeed * delta;
-    if (moveLeft || moveRight) velocity.x -= direction.x * currentSpeed * delta;
+    if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+    if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
 
     controls.moveRight(-velocity.x * delta);
     controls.moveForward(-velocity.z * delta);
@@ -748,9 +356,7 @@ animate();
 // Resize
 // ------------------------------------------------------------
 window.addEventListener("resize", () => {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  camera.aspect = w / h;
+  camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
