@@ -1,6 +1,6 @@
-// assets/js/main.js — Salon_04: historischer Stil (Rundungen/Beine/Rahmen) + Texturen aus Salon_4.jpg
+// assets/js/main.js — Biedermeier-Look: runde Kanten, gedrechselte Beine, gerollte Armlehnen, wenig Ornament
+// Texturen kommen aus /salon3d/assets/img/Salon_4.jpg via Canvas-Crops (Tapete/Holz/Polster/Teppich)
 // Voraussetzung: index.html hat Importmap für "three" und "three/addons/"
-// Datei im Repo: /salon3d/assets/img/Salon_4.jpg
 
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
@@ -119,7 +119,7 @@ document.addEventListener("keyup", (e) => {
 });
 
 // ------------------------------------------------------------
-// Raum-Masse (Foto-Feeling)
+// Raum-Masse
 // ------------------------------------------------------------
 const ROOM_W = 13.6;
 const ROOM_D = 18.0;
@@ -135,30 +135,29 @@ function clampToRoom(pos) {
 }
 
 // ------------------------------------------------------------
-// Licht (weich, warm, Fenster links)
+// Licht (Salon: weich + warm, Fenster links)
 // ------------------------------------------------------------
-const ambient = new THREE.AmbientLight(0xfff0e1, 0.52);
+const ambient = new THREE.AmbientLight(0xfff0e1, 0.58);
 scene.add(ambient);
 
-const windowLight = new THREE.DirectionalLight(0xd9ecff, 0.80);
+const windowLight = new THREE.DirectionalLight(0xd9ecff, 0.78);
 windowLight.position.set(-9, 7, 6);
 scene.add(windowLight);
 
-const keyLight = new THREE.DirectionalLight(0xffdfbf, 0.60);
+const keyLight = new THREE.DirectionalLight(0xffdfbf, 0.62);
 keyLight.position.set(8, 7, 2);
 scene.add(keyLight);
 
-const lampWarm = new THREE.PointLight(0xffd0a0, 1.05, 16, 2);
+const lampWarm = new THREE.PointLight(0xffd0a0, 1.05, 18, 2);
 lampWarm.position.set(4.8, 2.7, -0.7);
 scene.add(lampWarm);
 
-const fireGlow = new THREE.PointLight(0xffb27a, 0.65, 7, 2);
+const fireGlow = new THREE.PointLight(0xffb27a, 0.60, 7, 2);
 fireGlow.position.set(0, 1.05, -halfD + 0.85);
 scene.add(fireGlow);
 
 // ------------------------------------------------------------
-// Textur-Crops aus Salon_4.jpg
-// (rect: normiert 0..1)
+// Crops aus Salon_4.jpg -> CanvasTexture
 // ------------------------------------------------------------
 function cropTextureFromImage(img, rect, outW = 1024, outH = 1024, repeat = null) {
   const sx = Math.max(0, Math.min(1, rect.x));
@@ -195,78 +194,35 @@ function cropTextureFromImage(img, rect, outW = 1024, outH = 1024, repeat = null
 }
 
 // ------------------------------------------------------------
-// Materialien (Fallbacks; werden nach Load ersetzt)
+// Materialien (Fallbacks)
 // ------------------------------------------------------------
-const matCeiling = new THREE.MeshStandardMaterial({ color: 0xcfc8bf, roughness: 0.98, metalness: 0.0 });
+const matCeiling = new THREE.MeshStandardMaterial({ color: 0xd3ccc2, roughness: 0.98, metalness: 0.0 });
 
-const matWallTop = new THREE.MeshStandardMaterial({
-  color: 0xc9beb2,
-  roughness: 0.95,
-  metalness: 0.0
-});
+const matWallTop = new THREE.MeshStandardMaterial({ color: 0xcfc3b7, roughness: 0.95, metalness: 0.0 });
+const matWallBottom = new THREE.MeshStandardMaterial({ color: 0x9a8f84, roughness: 0.92, metalness: 0.0 });
 
-const matWallBottom = new THREE.MeshStandardMaterial({
-  color: 0x8c7f73,
-  roughness: 0.92,
-  metalness: 0.0
-});
+const matTrim = new THREE.MeshStandardMaterial({ color: 0xbfb5aa, roughness: 0.92, metalness: 0.0 });
 
-const matTrim = new THREE.MeshStandardMaterial({
-  color: 0xb9afa4,
-  roughness: 0.90,
-  metalness: 0.0
-});
+// Biedermeier: warmes, dunkles Nussholz / Mahagoni-Feeling
+const matWood = new THREE.MeshStandardMaterial({ color: 0x4a2b1a, roughness: 0.78, metalness: 0.0 });
+const matWoodVeneer = new THREE.MeshStandardMaterial({ color: 0x5a3220, roughness: 0.75, metalness: 0.0 });
 
-const matWoodFloor = new THREE.MeshStandardMaterial({
-  color: 0x6a4a2f,
-  roughness: 0.82,
-  metalness: 0.0
-});
+const matBrass = new THREE.MeshStandardMaterial({ color: 0xb08a3a, roughness: 0.35, metalness: 0.35 });
 
-const matWoodDark = new THREE.MeshStandardMaterial({
-  color: 0x3f2818,
-  roughness: 0.84,
-  metalness: 0.0
-});
+const matUpholstery = new THREE.MeshStandardMaterial({ color: 0xb2a18b, roughness: 0.92, metalness: 0.0 });
+const matUpholsteryAlt = new THREE.MeshStandardMaterial({ color: 0x9f8f7c, roughness: 0.92, metalness: 0.0 });
 
-const matGold = new THREE.MeshStandardMaterial({
-  color: 0xb08a3a,
-  roughness: 0.30,
-  metalness: 0.40
-});
-
-const matMarble = new THREE.MeshStandardMaterial({
-  color: 0xded8d2,
-  roughness: 0.35,
-  metalness: 0.0
-});
-
-const matFireBlack = new THREE.MeshStandardMaterial({
-  color: 0x171615,
-  roughness: 0.85,
-  metalness: 0.05
-});
-
-const matUpholstery = new THREE.MeshStandardMaterial({
-  color: 0xb2a18b,
-  roughness: 0.92,
-  metalness: 0.0
-});
-
-const matUpholsteryAlt = new THREE.MeshStandardMaterial({
-  color: 0x9f8f7c,
-  roughness: 0.92,
-  metalness: 0.0
-});
+const matMarble = new THREE.MeshStandardMaterial({ color: 0xded8d2, roughness: 0.35, metalness: 0.0 });
+const matFireBlack = new THREE.MeshStandardMaterial({ color: 0x171615, roughness: 0.85, metalness: 0.05 });
 
 // ------------------------------------------------------------
-// Raum bauen (Tapete + Täfer + Sockel + Stuckleiste)
+// Raum-Geometrie (Tapete + Täfer + Sockel + Stuckleiste)
 // ------------------------------------------------------------
 const room = new THREE.Group();
 scene.add(room);
 
 // Boden
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), matWoodFloor);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x5c3b24, roughness: 0.80 }));
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = 0;
 room.add(floor);
@@ -301,7 +257,7 @@ addWallPlane(ROOM_D, upperH, matWallTop, -halfW, wainscotH + upperH / 2, 0, Math
 addWallPlane(ROOM_D, wainscotH, matWallBottom, halfW, wainscotH / 2, 0, -Math.PI / 2);
 addWallPlane(ROOM_D, upperH, matWallTop, halfW, wainscotH + upperH / 2, 0, -Math.PI / 2);
 
-// Sockel + Stuck
+// Sockel + Stuckleiste
 const baseboardH = 0.12;
 const baseboardT = 0.06;
 const corniceH = 0.14;
@@ -354,7 +310,7 @@ rug.position.set(0, 0.012, -2.2);
 room.add(rug);
 
 // ------------------------------------------------------------
-// Kamin (mit Profilen)
+// Kamin (neutral klassisch, nicht modern)
 // ------------------------------------------------------------
 const fireplace = new THREE.Group();
 room.add(fireplace);
@@ -363,21 +319,14 @@ const mantel = new THREE.Mesh(new THREE.BoxGeometry(3.25, 2.15, 0.60), matMarble
 mantel.position.set(0, 1.05, -halfD + 0.40);
 fireplace.add(mantel);
 
-// Profilrahmen vorne (dünner Rahmen)
-const mantelFrame = new THREE.Mesh(new THREE.BoxGeometry(3.45, 2.30, 0.10), matMarble);
-mantelFrame.position.set(0, 1.12, -halfD + 0.70);
-fireplace.add(mantelFrame);
+// Gesims / Stufe
+const mantelStep = new THREE.Mesh(new THREE.BoxGeometry(3.45, 0.10, 0.72), matMarble);
+mantelStep.position.set(0, 2.05, -halfD + 0.40);
+fireplace.add(mantelStep);
 
-// Feueröffnung
 const inner = new THREE.Mesh(new THREE.BoxGeometry(1.75, 1.28, 0.45), matFireBlack);
 inner.position.set(0, 0.80, -halfD + 0.62);
 fireplace.add(inner);
-
-// Rundbogen
-const arch = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.08, 12, 44, Math.PI), matMarble);
-arch.rotation.x = Math.PI / 2;
-arch.position.set(0, 1.06, -halfD + 0.84);
-fireplace.add(arch);
 
 // Glut
 const emberGeo = new THREE.SphereGeometry(0.06, 10, 10);
@@ -387,110 +336,156 @@ const emberMat = new THREE.MeshStandardMaterial({
   emissive: 0x331000,
   emissiveIntensity: 0.38
 });
-for (let i = 0; i < 30; i++) {
+for (let i = 0; i < 26; i++) {
   const e = new THREE.Mesh(emberGeo, emberMat);
-  e.position.set((Math.random() - 0.5) * 0.95, 0.52 + Math.random() * 0.30, -halfD + 0.72 + (Math.random() - 0.5) * 0.16);
+  e.position.set((Math.random() - 0.5) * 0.90, 0.52 + Math.random() * 0.26, -halfD + 0.72 + (Math.random() - 0.5) * 0.14);
   fireplace.add(e);
 }
 
 // ------------------------------------------------------------
-// Historische Möbel (keine Quader!)
+// Biedermeier-Möbel: runde Kanten + gedrechselte Beine + gerollte Arme
 // ------------------------------------------------------------
-function makeCabrioleLeg(height = 0.52) {
-  // Lathe-Profil (S-Kurve)
+function roundedBoxGeometry(w, h, d, r = 0.12, seg = 6) {
+  // Rounded rectangle in XZ, extruded to Y via Box-like shape (simplified)
+  // We build a Shape in XZ, extrude along Y, then rotate.
+  const hw = w / 2;
+  const hd = d / 2;
+  const rr = Math.min(r, hw * 0.45, hd * 0.45);
+
+  const shape = new THREE.Shape();
+  shape.moveTo(-hw + rr, -hd);
+  shape.lineTo(hw - rr, -hd);
+  shape.quadraticCurveTo(hw, -hd, hw, -hd + rr);
+  shape.lineTo(hw, hd - rr);
+  shape.quadraticCurveTo(hw, hd, hw - rr, hd);
+  shape.lineTo(-hw + rr, hd);
+  shape.quadraticCurveTo(-hw, hd, -hw, hd - rr);
+  shape.lineTo(-hw, -hd + rr);
+  shape.quadraticCurveTo(-hw, -hd, -hw + rr, -hd);
+
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false, steps: 1, curveSegments: seg });
+  // Extrude goes in +Z; rotate so height is Y
+  geo.rotateX(-Math.PI / 2);
+  geo.translate(0, h / 2, 0);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function makeTurnedLeg(height = 0.55) {
+  // Gedrechseltes Bein (Biedermeier: “turned”)
   const pts = [
     new THREE.Vector2(0.06, 0.00),
     new THREE.Vector2(0.07, 0.06),
-    new THREE.Vector2(0.05, 0.14),
-    new THREE.Vector2(0.08, 0.24),
-    new THREE.Vector2(0.05, 0.34),
-    new THREE.Vector2(0.07, 0.44),
+    new THREE.Vector2(0.05, 0.12),
+    new THREE.Vector2(0.08, 0.20),
+    new THREE.Vector2(0.06, 0.30),
+    new THREE.Vector2(0.09, 0.40),
     new THREE.Vector2(0.06, height)
   ];
-  const geo = new THREE.LatheGeometry(pts, 18);
-  const m = new THREE.Mesh(geo, matWoodDark);
+  const geo = new THREE.LatheGeometry(pts, 20);
+  const m = new THREE.Mesh(geo, matWoodVeneer);
   return m;
 }
 
-function makeBeadedTrim(w, h) {
-  // Zierkante (kleine Perlen) – dezent, aber macht “historisch”
+function makeBiedermeierSofa() {
   const g = new THREE.Group();
-  const beadGeo = new THREE.SphereGeometry(0.025, 10, 10);
-  const count = Math.floor((w + h) * 14);
-  for (let i = 0; i < count; i++) {
-    const bead = new THREE.Mesh(beadGeo, matGold);
-    const t = i / count;
 
-    // entlang eines Rechteck-Rahmens
-    const per = 2 * (w + h);
-    const s = t * per;
+  // Holzsockel mit Rundungen
+  const base = new THREE.Mesh(roundedBoxGeometry(3.35, 0.22, 1.12, 0.14, 8), matWood);
+  base.position.y = 0.40;
+  g.add(base);
 
-    let x = 0,
-      y = 0;
-    if (s < w) {
-      x = -w / 2 + s;
-      y = h / 2;
-    } else if (s < w + h) {
-      x = w / 2;
-      y = h / 2 - (s - w);
-    } else if (s < 2 * w + h) {
-      x = w / 2 - (s - (w + h));
-      y = -h / 2;
-    } else {
-      x = -w / 2;
-      y = -h / 2 + (s - (2 * w + h));
-    }
+  // Sitzpolster (weich)
+  const seat = new THREE.Mesh(roundedBoxGeometry(3.18, 0.22, 0.98, 0.18, 8), matUpholsteryAlt);
+  seat.position.y = 0.58;
+  g.add(seat);
 
-    bead.position.set(x, y, 0.02);
-    g.add(bead);
+  // Rückenpolster (leicht geneigt)
+  const back = new THREE.Mesh(roundedBoxGeometry(3.08, 0.68, 0.22, 0.16, 8), matUpholsteryAlt);
+  back.position.set(0, 1.05, -0.43);
+  back.rotation.x = -0.06;
+  g.add(back);
+
+  // Gerollte Armlehnen (Zylinder + Kappe)
+  function armRoll(side = 1) {
+    const arm = new THREE.Group();
+
+    const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.95, 24), matUpholsteryAlt);
+    roll.rotation.z = Math.PI / 2;
+    roll.position.set(0.0, 0.95, 0.05);
+    arm.add(roll);
+
+    const armBody = new THREE.Mesh(roundedBoxGeometry(0.42, 0.60, 1.05, 0.16, 8), matUpholsteryAlt);
+    armBody.position.set(0.0, 0.70, 0.0);
+    arm.add(armBody);
+
+    // Holzabschluss am Fuss
+    const armPlinth = new THREE.Mesh(roundedBoxGeometry(0.44, 0.16, 1.08, 0.10, 8), matWood);
+    armPlinth.position.set(0.0, 0.44, 0.0);
+    arm.add(armPlinth);
+
+    arm.position.x = side * 1.57;
+    return arm;
   }
+
+  g.add(armRoll(-1));
+  g.add(armRoll(1));
+
+  // Beine (turned)
+  const legs = [
+    [-1.45, 0, 0.40],
+    [1.45, 0, 0.40],
+    [-1.45, 0, -0.40],
+    [1.45, 0, -0.40]
+  ];
+  for (const [x, y, z] of legs) {
+    const leg = makeTurnedLeg(0.52);
+    leg.position.set(x, y, z);
+    g.add(leg);
+  }
+
   return g;
 }
 
-function makeLouisChair({ upholsteryMat = matUpholstery, scale = 1.0 } = {}) {
+function makeBiedermeierChair() {
   const g = new THREE.Group();
 
-  // Sitzrahmen (Holz, profiliert)
-  const seatFrame = new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.16, 0.95), matWoodDark);
-  seatFrame.position.set(0, 0.60, 0);
+  // Sitzrahmen Holz (rund)
+  const seatFrame = new THREE.Mesh(roundedBoxGeometry(1.08, 0.18, 0.95, 0.14, 8), matWood);
+  seatFrame.position.y = 0.56;
   g.add(seatFrame);
 
-  // Sitzpolster (weich, leicht gerundet)
-  const seatCush = new THREE.Mesh(new THREE.BoxGeometry(1.00, 0.18, 0.88), upholsteryMat);
-  seatCush.position.set(0, 0.72, 0.0);
-  g.add(seatCush);
+  // Sitzpolster
+  const seat = new THREE.Mesh(roundedBoxGeometry(1.00, 0.18, 0.86, 0.16, 8), matUpholstery);
+  seat.position.y = 0.70;
+  g.add(seat);
 
-  // Rückenrahmen (geschwungen)
-  const backFrame = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.18, 0.10), matWoodDark);
-  backFrame.position.set(0, 1.46, -0.38);
-  g.add(backFrame);
+  // Rücken: gebogene Platte + Polster
+  const backShell = new THREE.Mesh(roundedBoxGeometry(1.02, 0.62, 0.12, 0.10, 8), matWoodVeneer);
+  backShell.position.set(0, 1.10, -0.38);
+  backShell.rotation.x = -0.08;
+  g.add(backShell);
 
-  const backCush = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.68, 0.12), upholsteryMat);
-  backCush.position.set(0, 1.13, -0.38);
-  g.add(backCush);
+  const backPad = new THREE.Mesh(roundedBoxGeometry(0.92, 0.54, 0.10, 0.10, 8), matUpholstery);
+  backPad.position.set(0, 1.10, -0.36);
+  backPad.rotation.x = -0.08;
+  g.add(backPad);
 
-  // Rückenkrone (Bogen)
-  const crown = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.05, 10, 28, Math.PI), matWoodDark);
-  crown.rotation.x = Math.PI / 2;
-  crown.position.set(0, 1.55, -0.38);
-  g.add(crown);
-
-  // Armlehnen (geschwungen)
+  // Armlehnen: sanft geschwungen (Tube)
   const armCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.50, 1.10, -0.10),
-    new THREE.Vector3(-0.58, 1.05, 0.10),
-    new THREE.Vector3(-0.45, 0.92, 0.35)
+    new THREE.Vector3(-0.46, 1.05, -0.10),
+    new THREE.Vector3(-0.52, 0.98, 0.15),
+    new THREE.Vector3(-0.40, 0.86, 0.35)
   ]);
-  const armGeo = new THREE.TubeGeometry(armCurve, 24, 0.05, 10, false);
-  const armL = new THREE.Mesh(armGeo, matWoodDark);
+  const armGeo = new THREE.TubeGeometry(armCurve, 22, 0.045, 10, false);
+  const armL = new THREE.Mesh(armGeo, matWoodVeneer);
   g.add(armL);
 
   const armR = armL.clone();
   armR.scale.x = -1;
   g.add(armR);
 
-  // Beine (Cabriole)
-  const legH = 0.58;
+  // Beine (turned)
   const legOffsets = [
     [-0.44, 0.0, 0.34],
     [0.44, 0.0, 0.34],
@@ -498,164 +493,100 @@ function makeLouisChair({ upholsteryMat = matUpholstery, scale = 1.0 } = {}) {
     [0.44, 0.0, -0.34]
   ];
   for (const [x, y, z] of legOffsets) {
-    const leg = makeCabrioleLeg(legH);
-    leg.position.set(x, 0.0, z);
-    // vorne leicht nach aussen
-    if (z > 0) leg.rotation.y = (x > 0 ? -1 : 1) * 0.12;
+    const leg = makeTurnedLeg(0.56);
+    leg.position.set(x, y, z);
     g.add(leg);
   }
 
-  // Zierperlen am Rücken (Gold)
-  const beads = makeBeadedTrim(1.02, 0.74);
-  beads.position.set(0, 1.13, -0.31);
-  g.add(beads);
-
-  g.scale.setScalar(scale);
   return g;
 }
 
-function makeLouisSofa({ upholsteryMat = matUpholsteryAlt } = {}) {
+function makeBiedermeierSideboard(w, h, d) {
   const g = new THREE.Group();
 
-  // Grundrahmen
-  const baseFrame = new THREE.Mesh(new THREE.BoxGeometry(3.30, 0.18, 1.08), matWoodDark);
-  baseFrame.position.set(0, 0.60, 0);
-  g.add(baseFrame);
+  // Korpus mit Rundkanten
+  const body = new THREE.Mesh(roundedBoxGeometry(w, h, d, 0.12, 8), matWood);
+  body.position.y = h / 2;
+  g.add(body);
 
-  // Sitzpolster (3-teilig Eindruck)
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(3.18, 0.20, 0.98), upholsteryMat);
-  seat.position.set(0, 0.74, 0.00);
-  g.add(seat);
+  // “Furnier”-Frontpaneele
+  const panel = new THREE.Mesh(roundedBoxGeometry(w * 0.88, h * 0.46, 0.06, 0.10, 8), matWoodVeneer);
+  panel.position.set(0, h * 0.58, d / 2 + 0.01);
+  g.add(panel);
 
-  // Rücken (geschwungen)
-  const back = new THREE.Mesh(new THREE.BoxGeometry(3.10, 0.70, 0.14), upholsteryMat);
-  back.position.set(0, 1.18, -0.46);
-  g.add(back);
+  // Schubladenlinie (dezent)
+  const line = new THREE.Mesh(new THREE.BoxGeometry(w * 0.90, 0.02, 0.02), matBrass);
+  line.position.set(0, h * 0.40, d / 2 + 0.05);
+  g.add(line);
 
-  // Rückenrahmen oben (Holzprofil)
-  const backTop = new THREE.Mesh(new THREE.BoxGeometry(3.20, 0.14, 0.12), matWoodDark);
-  backTop.position.set(0, 1.55, -0.46);
-  g.add(backTop);
-
-  // Seitenteile mit “S”-Arm (links/rechts)
-  const sideGeo = new THREE.Shape();
-  sideGeo.moveTo(0, 0);
-  sideGeo.bezierCurveTo(0.10, 0.25, 0.05, 0.55, 0.20, 0.75);
-  sideGeo.bezierCurveTo(0.34, 0.92, 0.30, 1.10, 0.18, 1.22);
-  sideGeo.bezierCurveTo(0.06, 1.34, 0.10, 1.55, 0.32, 1.62);
-  sideGeo.lineTo(0.32, 1.70);
-  sideGeo.lineTo(0.00, 1.70);
-  sideGeo.lineTo(0.00, 0.0);
-
-  const extrude = new THREE.ExtrudeGeometry(sideGeo, { depth: 0.90, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02, bevelSegments: 2, steps: 1 });
-  extrude.computeVertexNormals();
-
-  const sideL = new THREE.Mesh(extrude, matWoodDark);
-  sideL.position.set(-1.65, 0.0, -0.45);
-  sideL.rotation.y = Math.PI / 2;
-  g.add(sideL);
-
-  const sideR = sideL.clone();
-  sideR.position.x = 1.65;
-  sideR.scale.x = -1;
-  g.add(sideR);
-
-  // Cabriole-Beine (6 Stück)
-  const legH = 0.60;
-  const legs = [
-    [-1.45, 0, 0.40],
-    [0.0, 0, 0.40],
-    [1.45, 0, 0.40],
-    [-1.45, 0, -0.40],
-    [0.0, 0, -0.40],
-    [1.45, 0, -0.40]
-  ];
-  for (const [x, y, z] of legs) {
-    const leg = makeCabrioleLeg(legH);
-    leg.position.set(x, y, z);
-    if (z > 0) leg.rotation.y = (x > 0 ? -1 : 1) * 0.10;
-    g.add(leg);
+  // Knöpfe (klein, Messing)
+  const knobGeo = new THREE.SphereGeometry(0.03, 10, 10);
+  for (const sx of [-0.18, 0.18]) {
+    const k = new THREE.Mesh(knobGeo, matBrass);
+    k.position.set(sx * w, h * 0.40, d / 2 + 0.06);
+    g.add(k);
   }
 
-  // Goldene Zierkante vorne
-  const frontBeads = makeBeadedTrim(3.10, 0.22);
-  frontBeads.position.set(0, 0.70, 0.52);
-  g.add(frontBeads);
+  // Beine
+  const legPos = [
+    [-w * 0.40, 0, d * 0.35],
+    [w * 0.40, 0, d * 0.35],
+    [-w * 0.40, 0, -d * 0.35],
+    [w * 0.40, 0, -d * 0.35]
+  ];
+  for (const [x, y, z] of legPos) {
+    const leg = makeTurnedLeg(0.42);
+    leg.position.set(x, y, z);
+    g.add(leg);
+  }
 
   return g;
 }
 
 // ------------------------------------------------------------
-// Historische “Anordnung” wie Salon_04
+// Anordnung (wie Foto: Sofa rechts, Sessel vorne links, zwei Sessel am Kamin, Sideboards)
 // ------------------------------------------------------------
-const sofa = makeLouisSofa({ upholsteryMat: matUpholsteryAlt });
+const sofa = makeBiedermeierSofa();
 sofa.position.set(halfW - 2.15, 0.0, -0.85);
 sofa.rotation.y = -Math.PI / 2;
 room.add(sofa);
 
-const chairFrontLeft = makeLouisChair({ upholsteryMat: matUpholstery, scale: 1.05 });
+const chairFrontLeft = makeBiedermeierChair();
 chairFrontLeft.position.set(-halfW + 2.05, 0.0, 3.05);
 chairFrontLeft.rotation.y = Math.PI / 6;
 room.add(chairFrontLeft);
 
-const chairA = makeLouisChair({ upholsteryMat: matUpholstery, scale: 1.00 });
+const chairA = makeBiedermeierChair();
 chairA.position.set(-2.15, 0.0, -5.35);
 chairA.rotation.y = Math.PI / 10;
 room.add(chairA);
 
-const chairB = makeLouisChair({ upholsteryMat: matUpholstery, scale: 1.00 });
+const chairB = makeBiedermeierChair();
 chairB.position.set(2.15, 0.0, -5.35);
 chairB.rotation.y = -Math.PI / 10;
 room.add(chairB);
 
-// Sideboards + Vitrine (mit mehr “Rahmen”)
-function makePanelCabinet(w, h, d) {
-  const g = new THREE.Group();
-
-  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), matWoodDark);
-  body.position.y = h / 2;
-  g.add(body);
-
-  // Frontpaneele
-  const panelMat = new THREE.MeshStandardMaterial({ color: 0x2f1c12, roughness: 0.86, metalness: 0.0 });
-  for (const sx of [-0.25, 0.25]) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(w * 0.42, h * 0.42, 0.05), panelMat);
-    p.position.set(sx * w, h * 0.58, d / 2 + 0.02);
-    g.add(p);
-  }
-
-  // Zierleisten (Goldpunkte)
-  const knobsGeo = new THREE.SphereGeometry(0.03, 10, 10);
-  for (const sx of [-0.22, 0.22]) {
-    for (const sy of [0.55, 0.35]) {
-      const k = new THREE.Mesh(knobsGeo, matGold);
-      k.position.set(sx * w, sy * h, d / 2 + 0.04);
-      g.add(k);
-    }
-  }
-
-  return g;
-}
-
-const cabinet = makePanelCabinet(1.25, 2.45, 0.60);
-cabinet.position.set(-halfW + 2.35, 0.0, -6.45);
-room.add(cabinet);
-
-const sideboardL = makePanelCabinet(2.75, 0.88, 0.62);
+// Sideboards links/rechts hinten
+const sideboardL = makeBiedermeierSideboard(2.75, 0.88, 0.62);
 sideboardL.position.set(-halfW + 2.65, 0.0, -4.85);
 room.add(sideboardL);
 
-const sideboardR = makePanelCabinet(3.70, 0.78, 0.62);
+const sideboardR = makeBiedermeierSideboard(3.70, 0.78, 0.62);
 sideboardR.position.set(halfW - 2.35, 0.0, -4.95);
 room.add(sideboardR);
 
-// Stehlampe (historischer: Fuss + Schaft + Schirm)
+// Hohe Vitrine/Schrank (Biedermeier: ruhiger Korpus, Rundkanten)
+const cabinet = makeBiedermeierSideboard(1.25, 2.45, 0.60);
+cabinet.position.set(-halfW + 2.35, 0.0, -6.45);
+room.add(cabinet);
+
+// Stehlampe (klassisch, schlicht)
 const lamp = new THREE.Group();
-const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 0.10, 20), matGold);
+const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 0.10, 20), matBrass);
 lampBase.position.y = 0.05;
 lamp.add(lampBase);
 
-const lampStand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.30, 18), matGold);
+const lampStand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.30, 18), matBrass);
 lampStand.position.y = 0.70;
 lamp.add(lampStand);
 
@@ -670,13 +601,13 @@ lamp.position.set(halfW - 3.45, 0.0, -1.05);
 room.add(lamp);
 
 // ------------------------------------------------------------
-// Bilder (Rahmen + Fläche) – später aus Salon_4.jpg Crops
+// Bilder (Rahmen + Fläche) aus Salon_4.jpg
 // ------------------------------------------------------------
 function makeFramedPainting(w, h, texture, x, y, z, ry) {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.18, h + 0.18, 0.08), matGold);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.18, h + 0.18, 0.08), matBrass);
   frame.position.set(x, y, z);
   frame.rotation.y = ry;
   room.add(frame);
@@ -688,8 +619,7 @@ function makeFramedPainting(w, h, texture, x, y, z, ry) {
 }
 
 // ------------------------------------------------------------
-// Salon_4.jpg laden → Texturen korrekt setzen
-// (Hier sind die Crops absichtlich “klein & planar”, damit es NICHT kachelig/perspektivisch kaputt geht.)
+// Salon_4.jpg laden -> Tapete/Holz/Polster/Teppich/Bilder korrekt setzen
 // ------------------------------------------------------------
 const refLoader = new THREE.TextureLoader();
 
@@ -702,30 +632,27 @@ refLoader.load(
       return;
     }
 
-    // Tapete: planar links der Kaminwand (ohne Rahmen/Decke)
-    // (aus Analyse: ca. x=0.325, y=0.245, w=0.125, h=0.223)
+    // Tapete: planar (keine Decke/Leisten) -> grössere, “ruhigere” Fläche, weniger Kachelquadrate
     const wallpaperTex = cropTextureFromImage(
       img,
-      { x: 0.325, y: 0.245, w: 0.125, h: 0.223 },
+      { x: 0.30, y: 0.26, w: 0.18, h: 0.26 },
       1024,
       1024,
-      { x: 6, y: 3 }
+      { x: 3.2, y: 2.2 }
     );
 
-    // Holz: möglichst “reine” Diele links unten (klein, wenig Objektanteil)
-    // (x=0, y=0.826, w=0.069, h=0.134)
+    // Holz: reine Dielen (links unten, wenig Objekt)
     const woodTex = cropTextureFromImage(
       img,
-      { x: 0.0, y: 0.826, w: 0.069, h: 0.134 },
+      { x: 0.02, y: 0.83, w: 0.10, h: 0.14 },
       1024,
       1024,
-      { x: 12, y: 10 }
+      { x: 7.5, y: 6.0 }
     );
-    // Dielenrichtung: entlang Z-Achse besser lesbar
     woodTex.rotation = Math.PI / 2;
     woodTex.center.set(0.5, 0.5);
 
-    // Teppich: zentraler Teppichbereich (nicht kacheln!)
+    // Teppich: Zentrum
     const rugTex = cropTextureFromImage(
       img,
       { x: 0.18, y: 0.62, w: 0.64, h: 0.34 },
@@ -734,17 +661,16 @@ refLoader.load(
       null
     );
 
-    // Polster: Sitzbereich Sofa rechts (planarer Patch)
-    // (x=0.756, y=0.619, w=0.0875, h=0.1004)
+    // Polster: Sofa rechts (planar)
     const upholsteryTex = cropTextureFromImage(
       img,
-      { x: 0.756, y: 0.619, w: 0.0875, h: 0.1004 },
+      { x: 0.74, y: 0.58, w: 0.12, h: 0.14 },
       1024,
       1024,
-      { x: 2, y: 2 }
+      { x: 1.8, y: 1.8 }
     );
 
-    // Gemälde über Kamin (Crop)
+    // Bilder
     const paintingCenterTex = cropTextureFromImage(
       img,
       { x: 0.36, y: 0.20, w: 0.28, h: 0.16 },
@@ -753,7 +679,6 @@ refLoader.load(
       null
     );
 
-    // Gemälde rechts (Crop)
     const paintingRightTex = cropTextureFromImage(
       img,
       { x: 0.80, y: 0.18, w: 0.16, h: 0.22 },
@@ -766,8 +691,13 @@ refLoader.load(
     matWallTop.map = wallpaperTex;
     matWallTop.needsUpdate = true;
 
-    matWoodFloor.map = woodTex;
-    matWoodFloor.needsUpdate = true;
+    // Bodenmaterial auf echtes Holz setzen
+    floor.material = new THREE.MeshStandardMaterial({
+      map: woodTex,
+      roughness: 0.80,
+      metalness: 0.0
+    });
+    floor.material.needsUpdate = true;
 
     rug.material = new THREE.MeshStandardMaterial({
       map: rugTex,
@@ -782,7 +712,6 @@ refLoader.load(
     matUpholsteryAlt.map = upholsteryTex;
     matUpholsteryAlt.needsUpdate = true;
 
-    // Bilder platzieren
     makeFramedPainting(2.8, 1.55, paintingCenterTex, 0, 2.65, -halfD + 0.02, 0);
     makeFramedPainting(2.0, 1.35, paintingRightTex, halfW - 0.85, 2.45, -1.9, -Math.PI / 2);
 
