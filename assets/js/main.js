@@ -1,5 +1,5 @@
-// assets/js/main.js — Biedermeier-Look + Anti-Pixel/Anti-Kachel
-// Texturen kommen aus /salon3d/assets/img/Salon_4.jpg via hochauflösenden Canvas-Crops (4096)
+// assets/js/main.js — Biedermeier-Look mit korrekten, sauberen Crops aus Salon_4.jpg
+// Ziel: KEINE “ganzer Raum als Tapete”-Repeats mehr, sondern echtes Tapetenmuster + Holz + Teppich + Polster.
 // Voraussetzung: index.html hat Importmap für "three" und "three/addons/"
 
 import * as THREE from "three";
@@ -7,6 +7,7 @@ import { PointerLockControls } from "three/addons/controls/PointerLockControls.j
 
 const statusEl = document.getElementById("status");
 const enterBtn = document.getElementById("enterBtn");
+
 const setStatus = (t) => {
   if (statusEl) statusEl.textContent = t;
   console.log("[STATUS]", t);
@@ -37,6 +38,7 @@ setStatus("Renderer OK");
 // ------------------------------------------------------------
 const controls = new PointerLockControls(camera, document.body);
 scene.add(controls.getObject());
+
 if (enterBtn) enterBtn.addEventListener("click", () => controls.lock());
 
 let moveForward = false,
@@ -137,8 +139,7 @@ function clampToRoom(pos) {
 // ------------------------------------------------------------
 // Licht (weich + warm, Fenster links)
 // ------------------------------------------------------------
-const ambient = new THREE.AmbientLight(0xfff0e1, 0.60);
-scene.add(ambient);
+scene.add(new THREE.AmbientLight(0xfff0e1, 0.60));
 
 const windowLight = new THREE.DirectionalLight(0xd9ecff, 0.78);
 windowLight.position.set(-9, 7, 6);
@@ -157,11 +158,11 @@ fireGlow.position.set(0, 1.05, -halfD + 0.85);
 scene.add(fireGlow);
 
 // ------------------------------------------------------------
-// Textur-Qualität (entscheidend gegen “pixeliges Irgendwas”)
+// Textur-Qualität
 // ------------------------------------------------------------
 const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
-const TEX_BIG = 4096;   // Tapete/Holz/Polster: gross, sonst Matsch
-const TEX_MED = 2048;   // Bilder/Teppich: reicht meist
+const TEX_BIG = 4096;
+const TEX_MED = 2048;
 
 function tuneTexture(tex, { repeat = null } = {}) {
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -171,7 +172,6 @@ function tuneTexture(tex, { repeat = null } = {}) {
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.magFilter = THREE.LinearFilter;
 
-  // hilft gegen “flimmernde Muster” bei schrägen Blickwinkeln
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
 
   if (repeat) {
@@ -216,7 +216,6 @@ const matWallBottom = new THREE.MeshStandardMaterial({ color: 0x9a8f84, roughnes
 
 const matTrim = new THREE.MeshStandardMaterial({ color: 0xbfb5aa, roughness: 0.92, metalness: 0.0 });
 
-// Biedermeier: warmes Nussholz / Furnier
 const matWood = new THREE.MeshStandardMaterial({ color: 0x4a2b1a, roughness: 0.78, metalness: 0.0 });
 const matWoodVeneer = new THREE.MeshStandardMaterial({ color: 0x5a3220, roughness: 0.75, metalness: 0.0 });
 
@@ -235,7 +234,10 @@ const room = new THREE.Group();
 scene.add(room);
 
 // Boden
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_D), new THREE.MeshStandardMaterial({ color: 0x5c3b24, roughness: 0.80 }));
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(ROOM_W, ROOM_D),
+  new THREE.MeshStandardMaterial({ color: 0x5c3b24, roughness: 0.80 })
+);
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = 0;
 room.add(floor);
@@ -293,7 +295,7 @@ addTrimBox(ROOM_W, corniceH, corniceT, 0, ROOM_H - corniceH / 2, halfD - cornice
 addTrimBox(corniceT, corniceH, ROOM_D, -halfW + corniceT / 2, ROOM_H - corniceH / 2, 0);
 addTrimBox(corniceT, corniceH, ROOM_D, halfW - corniceT / 2, ROOM_H - corniceH / 2, 0);
 
-// Fenster links: Lichtfläche + Vorhang
+// Fenster links (Lichtfläche + Vorhang)
 const windowOpening = new THREE.Mesh(
   new THREE.PlaneGeometry(2.1, 3.0),
   new THREE.MeshStandardMaterial({
@@ -301,7 +303,7 @@ const windowOpening = new THREE.Mesh(
     roughness: 0.25,
     metalness: 0.0,
     emissive: 0x0f2236,
-    emissiveIntensity: 0.28
+    emissiveIntensity: 0.28,
   })
 );
 windowOpening.position.set(-halfW + 0.01, 2.05, -5.2);
@@ -317,7 +319,10 @@ curtain.rotation.y = Math.PI / 2;
 room.add(curtain);
 
 // Teppich (Plane)
-const rug = new THREE.Mesh(new THREE.PlaneGeometry(7.9, 6.5), new THREE.MeshStandardMaterial({ color: 0x7b1f1f, roughness: 0.95 }));
+const rug = new THREE.Mesh(
+  new THREE.PlaneGeometry(7.9, 6.5),
+  new THREE.MeshStandardMaterial({ color: 0x7b1f1f, roughness: 0.95 })
+);
 rug.rotation.x = -Math.PI / 2;
 rug.position.set(0, 0.012, -2.2);
 room.add(rug);
@@ -346,16 +351,20 @@ const emberMat = new THREE.MeshStandardMaterial({
   color: 0xff6d3a,
   roughness: 0.6,
   emissive: 0x331000,
-  emissiveIntensity: 0.38
+  emissiveIntensity: 0.38,
 });
 for (let i = 0; i < 26; i++) {
   const e = new THREE.Mesh(emberGeo, emberMat);
-  e.position.set((Math.random() - 0.5) * 0.90, 0.52 + Math.random() * 0.26, -halfD + 0.72 + (Math.random() - 0.5) * 0.14);
+  e.position.set(
+    (Math.random() - 0.5) * 0.90,
+    0.52 + Math.random() * 0.26,
+    -halfD + 0.72 + (Math.random() - 0.5) * 0.14
+  );
   fireplace.add(e);
 }
 
 // ------------------------------------------------------------
-// Biedermeier-Möbel: runde Kanten + gedrechselte Beine + gerollte Arme
+// Möbel (wie bisher)
 // ------------------------------------------------------------
 function roundedBoxGeometry(w, h, d, r = 0.12, seg = 8) {
   const hw = w / 2;
@@ -388,7 +397,7 @@ function makeTurnedLeg(height = 0.55) {
     new THREE.Vector2(0.08, 0.20),
     new THREE.Vector2(0.06, 0.30),
     new THREE.Vector2(0.09, 0.40),
-    new THREE.Vector2(0.06, height)
+    new THREE.Vector2(0.06, height),
   ];
   const geo = new THREE.LatheGeometry(pts, 24);
   return new THREE.Mesh(geo, matWoodVeneer);
@@ -437,7 +446,7 @@ function makeBiedermeierSofa() {
     [-1.45, 0, 0.40],
     [1.45, 0, 0.40],
     [-1.45, 0, -0.40],
-    [1.45, 0, -0.40]
+    [1.45, 0, -0.40],
   ];
   for (const [x, y, z] of legs) {
     const leg = makeTurnedLeg(0.52);
@@ -472,7 +481,7 @@ function makeBiedermeierChair() {
   const armCurve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(-0.46, 1.05, -0.10),
     new THREE.Vector3(-0.52, 0.98, 0.15),
-    new THREE.Vector3(-0.40, 0.86, 0.35)
+    new THREE.Vector3(-0.40, 0.86, 0.35),
   ]);
   const armGeo = new THREE.TubeGeometry(armCurve, 26, 0.045, 12, false);
   const armL = new THREE.Mesh(armGeo, matWoodVeneer);
@@ -486,7 +495,7 @@ function makeBiedermeierChair() {
     [-0.44, 0.0, 0.34],
     [0.44, 0.0, 0.34],
     [-0.44, 0.0, -0.34],
-    [0.44, 0.0, -0.34]
+    [0.44, 0.0, -0.34],
   ];
   for (const [x, y, z] of legOffsets) {
     const leg = makeTurnedLeg(0.56);
@@ -523,7 +532,7 @@ function makeBiedermeierSideboard(w, h, d) {
     [-w * 0.40, 0, d * 0.35],
     [w * 0.40, 0, d * 0.35],
     [-w * 0.40, 0, -d * 0.35],
-    [w * 0.40, 0, -d * 0.35]
+    [w * 0.40, 0, -d * 0.35],
   ];
   for (const [x, y, z] of legPos) {
     const leg = makeTurnedLeg(0.42);
@@ -534,9 +543,7 @@ function makeBiedermeierSideboard(w, h, d) {
   return g;
 }
 
-// ------------------------------------------------------------
 // Anordnung
-// ------------------------------------------------------------
 const sofa = makeBiedermeierSofa();
 sofa.position.set(halfW - 2.15, 0.0, -0.85);
 sofa.rotation.y = -Math.PI / 2;
@@ -569,7 +576,7 @@ const cabinet = makeBiedermeierSideboard(1.25, 2.45, 0.60);
 cabinet.position.set(-halfW + 2.35, 0.0, -6.45);
 room.add(cabinet);
 
-// Lampe (schlicht)
+// Lampe
 const lamp = new THREE.Group();
 const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 0.10, 20), matBrass);
 lampBase.position.y = 0.05;
@@ -590,7 +597,7 @@ lamp.position.set(halfW - 3.45, 0.0, -1.05);
 room.add(lamp);
 
 // ------------------------------------------------------------
-// Bilder (Rahmen + Fläche) aus Salon_4.jpg
+// Bilder (Rahmen + Fläche) — optional, bleiben schlicht
 // ------------------------------------------------------------
 function makeFramedPainting(w, h, texture, x, y, z, ry) {
   tuneTexture(texture);
@@ -606,93 +613,70 @@ function makeFramedPainting(w, h, texture, x, y, z, ry) {
 }
 
 // ------------------------------------------------------------
-// Salon_4.jpg laden -> saubere, hochauflösende Texturen setzen
+// Salon_4.jpg laden -> KORREKTE, SAUBERE Crops setzen
 // ------------------------------------------------------------
-const refLoader = new THREE.TextureLoader();
+setStatus("Lade Salon_4.jpg …");
 
-refLoader.load(
+const loader = new THREE.TextureLoader();
+loader.load(
   "/salon3d/assets/img/Salon_4.jpg",
   (refTex) => {
     const img = refTex.image;
     if (!img || !img.width || !img.height) {
-      setStatus("FEHLER: Referenzbild nicht verfügbar");
+      setStatus("FEHLER: Bilddaten fehlen");
       return;
     }
 
-    // WICHTIG: grössere Crops + weniger Repeat = weniger “Kachel”
-    // Tapete (ruhiger Bereich, grösserer Ausschnitt)
+    // Diese Rects sind aus dem Bild (1600×896) so gewählt,
+    // dass NUR das jeweilige Material drin ist (keine Rahmen/Kamin/Decke als “Tapete”).
+    // Tapete: reines Muster (Crop um x=540..720, y=210..390)
     const wallpaperTex = cropTextureFromImage(
       img,
-      { x: 0.26, y: 0.22, w: 0.28, h: 0.34 },
+      { x: 540 / 1600, y: 210 / 896, w: 180 / 1600, h: 180 / 896 },
       TEX_BIG,
       TEX_BIG,
-      { x: 2.2, y: 1.6 }
+      { x: 2.1, y: 1.6 }
     );
 
-    // Holz (Dielenbereich möglichst “clean”)
+    // Holz: möglichst “clean” rechts unten (x=1420..1600, y=790..896)
     const woodTex = cropTextureFromImage(
       img,
-      { x: 0.02, y: 0.83, w: 0.14, h: 0.15 },
+      { x: 1420 / 1600, y: 790 / 896, w: 180 / 1600, h: 106 / 896 },
       TEX_BIG,
       TEX_BIG,
-      { x: 5.0, y: 4.0 }
+      { x: 3.8, y: 3.0 }
     );
     // Dielenrichtung
     woodTex.rotation = Math.PI / 2;
     woodTex.center.set(0.5, 0.5);
     woodTex.needsUpdate = true;
 
-    // Teppich (kein Repeat!)
+    // Teppich: Zentrum (x=520..1080, y=640..880) — ohne Möbel
     const rugTex = cropTextureFromImage(
       img,
-      { x: 0.18, y: 0.62, w: 0.64, h: 0.34 },
+      { x: 520 / 1600, y: 640 / 896, w: 560 / 1600, h: 240 / 896 },
       TEX_MED,
       TEX_MED,
       null
     );
 
-    // Polster (grösserer, ruhiger Crop → weniger “matschig”)
+    // Polster: so “clean” wie möglich (x=1280..1395, y=520..610)
     const upholsteryTex = cropTextureFromImage(
       img,
-      { x: 0.70, y: 0.56, w: 0.18, h: 0.18 },
+      { x: 1280 / 1600, y: 520 / 896, w: 115 / 1600, h: 90 / 896 },
       TEX_BIG,
       TEX_BIG,
-      { x: 1.4, y: 1.4 }
-    );
-
-    // Bilder
-    const paintingCenterTex = cropTextureFromImage(
-      img,
-      { x: 0.34, y: 0.18, w: 0.32, h: 0.18 },
-      TEX_MED,
-      TEX_MED,
-      null
-    );
-
-    const paintingRightTex = cropTextureFromImage(
-      img,
-      { x: 0.78, y: 0.16, w: 0.18, h: 0.24 },
-      TEX_MED,
-      TEX_MED,
-      null
+      { x: 1.2, y: 1.2 }
     );
 
     // Apply
     matWallTop.map = wallpaperTex;
     matWallTop.needsUpdate = true;
 
-    floor.material = new THREE.MeshStandardMaterial({
-      map: woodTex,
-      roughness: 0.80,
-      metalness: 0.0
-    });
+    floor.material = new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.80, metalness: 0.0 });
     floor.material.needsUpdate = true;
 
-    rug.material = new THREE.MeshStandardMaterial({
-      map: rugTex,
-      roughness: 0.95,
-      metalness: 0.0
-    });
+    rug.material = new THREE.MeshStandardMaterial({ map: rugTex, roughness: 0.95, metalness: 0.0 });
     rug.material.needsUpdate = true;
 
     matUpholstery.map = upholsteryTex;
@@ -701,15 +685,22 @@ refLoader.load(
     matUpholsteryAlt.map = upholsteryTex;
     matUpholsteryAlt.needsUpdate = true;
 
+    // Optional: ein Bild über dem Kamin aus dem Foto (nur als “Platzhalter”)
+    const paintingCenterTex = cropTextureFromImage(
+      img,
+      { x: 560 / 1600, y: 150 / 896, w: 480 / 1600, h: 210 / 896 },
+      TEX_MED,
+      TEX_MED,
+      null
+    );
     makeFramedPainting(2.8, 1.55, paintingCenterTex, 0, 2.65, -halfD + 0.02, 0);
-    makeFramedPainting(2.0, 1.35, paintingRightTex, halfW - 0.85, 2.45, -1.9, -Math.PI / 2);
 
     setStatus("Szene bereit");
   },
   undefined,
   (err) => {
     console.error(err);
-    setStatus("FEHLER: Salon_4.jpg konnte nicht geladen werden");
+    setStatus("FEHLER: /assets/img/Salon_4.jpg lädt nicht (Pfad/Name?)");
   }
 );
 
